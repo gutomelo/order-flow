@@ -44,6 +44,8 @@ requisições. Um processador remove chaves sensíveis conhecidas (`password`, `
 - `correlation_id` acompanha o fluxo inteiro: nasce com o `request_id` e é propagado para
   Domain Events (`DomainEvent.correlation_id`), headers das tasks Celery e logs dos workers.
 - Ambos são vinculados ao contexto do structlog (`contextvars`), aparecendo em todo log do fluxo.
+- Implementado na Phase 1: middleware, header de resposta e logs. A propagação para Celery
+  (headers da task + `task_prerun`) entra junto com a primeira task real.
 - `AuditLog.request_id` liga auditoria a logs.
 
 ```mermaid

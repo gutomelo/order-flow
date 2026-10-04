@@ -1,0 +1,185 @@
+"""Settings compartilhados por todos os ambientes.
+
+Todo valor sensível ou dependente de ambiente vem de variáveis de ambiente
+(documentadas em `.env.example` na raiz do repositório).
+"""
+
+from shared.logging import build_logging_config, configure_structlog
+
+from .environment import BASE_DIR, env
+
+# ---------------------------------------------------------------------------
+# Núcleo
+# ---------------------------------------------------------------------------
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+DEBUG = env.bool("DJANGO_DEBUG", default=False)
+ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS", default=[])
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # Terceiros
+    "corsheaders",
+    "django_filters",
+    "drf_spectacular",
+    "rest_framework",
+    # Módulos de negócio
+    "apps.identity",
+]
+
+MIDDLEWARE = [
+    "shared.logging.middleware.RequestIdMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+# Modelo de usuário customizado desde o primeiro migrate: trocá-lo depois exige reescrever
+# migrations de auth/admin. A implementação completa de identity vem na Phase 2.
+AUTH_USER_MODEL = "identity.User"
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Banco de dados (ADR-004)
+# ---------------------------------------------------------------------------
+DATABASES = {"default": env.db("DATABASE_URL")}
+# Transações explícitas nos use cases; nada de transação implícita por request.
+DATABASES["default"]["ATOMIC_REQUESTS"] = False
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
+# ---------------------------------------------------------------------------
+# Cache (ADR-006)
+# ---------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL"),
+        "TIMEOUT": 300,
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Internacionalização e tempo
+# ---------------------------------------------------------------------------
+LANGUAGE_CODE = "pt-br"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# ---------------------------------------------------------------------------
+# Django REST Framework
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    # JWT entra na Phase 2 (ADR-007). Até lá nenhuma autenticação é aceita pela API.
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    # Seguro por padrão: endpoints precisam declarar explicitamente se são públicos.
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_PAGINATION_CLASS": "shared.pagination.DefaultPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "shared.exceptions.handler.api_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("API_THROTTLE_ANON", default="60/min"),
+        "user": env("API_THROTTLE_USER", default="600/min"),
+    },
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "OrderFlow API",
+    "DESCRIPTION": "API B2B de gestão de pedidos e estoque.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+",
+}
+
+# ---------------------------------------------------------------------------
+# CORS (somente as origens do frontend)
+# ---------------------------------------------------------------------------
+CORS_ALLOWED_ORIGINS: list[str] = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CORS_EXPOSE_HEADERS = ["X-Request-ID"]
+
+# ---------------------------------------------------------------------------
+# Celery (ADR-005)
+# ---------------------------------------------------------------------------
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_TIMEOUT = 3
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_TRACK_STARTED = True
+# Mantém a configuração de logging do Django (structlog) também nos workers.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+# ---------------------------------------------------------------------------
+# Logging estruturado (docs/architecture/observability.md)
+# ---------------------------------------------------------------------------
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+LOG_FORMAT = env("LOG_FORMAT", default="json")
+SERVICE_NAME = env("SERVICE_NAME", default="orderflow-api")
+
+LOGGING = build_logging_config(
+    level=LOG_LEVEL, json_output=LOG_FORMAT == "json", service=SERVICE_NAME
+)
+configure_structlog(service=SERVICE_NAME, json_output=LOG_FORMAT == "json")
+
+# ---------------------------------------------------------------------------
+# Segurança comum a todos os ambientes
+# ---------------------------------------------------------------------------
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"

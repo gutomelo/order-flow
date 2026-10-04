@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+.moon/cache
+.claude
+docs
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/dist
+**/coverage

@@ -1,7 +1,5 @@
 # Desenvolvimento local
 
-> Este guia descreve o ambiente **a partir da Phase 1**. Na Phase 0 o repositório contém apenas
-> documentação e configuração de contexto.
 
 ## Pré-requisitos
 
@@ -21,8 +19,8 @@ Node e pnpm **não** precisam ser instalados manualmente: o moon os provisiona c
 git clone <repo> orderflow && cd orderflow
 cp .env.example .env              # valores locais; nunca commitar .env
 docker compose up                 # postgres, redis, rabbitmq, backend, frontend, celery
-docker compose exec backend uv run python manage.py migrate
-docker compose exec backend uv run python manage.py createsuperuser
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
 ```
 
 | Serviço | URL |
@@ -76,8 +74,8 @@ Sempre commitar `uv.lock` / `pnpm-lock.yaml`. Nova dependência relevante: justi
 
 ```bash
 make migrate
-docker compose exec backend uv run python manage.py makemigrations <module> --name <descricao>
-docker compose exec backend uv run python manage.py sqlmigrate <module> <numero>
+docker compose exec backend python manage.py makemigrations <module> --name <descricao>
+docker compose exec backend python manage.py sqlmigrate <module> <numero>
 docker compose exec postgres psql -U orderflow orderflow
 ```
 
@@ -85,7 +83,8 @@ Reset completo do ambiente local (apaga dados): `docker compose down -v`.
 
 ## Variáveis de ambiente
 
-Documentadas em `.env.example` (criado na Phase 1). Grupos previstos: Django (`DJANGO_SECRET_KEY`,
+Documentadas em `.env.example`. O Compose funciona sem `.env`; crie-o (`cp .env.example .env`)
+para trocar portas do host ou rodar backend/testes nativamente. Grupos: Django (`DJANGO_SECRET_KEY`,
 `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`), banco (`DATABASE_URL`), Redis (`REDIS_URL`), broker
 (`CELERY_BROKER_URL`), JWT (tempos de vida), CORS (`CORS_ALLOWED_ORIGINS`), regras de negócio
 (`STOCK_RESERVATION_TTL_MINUTES`, `ORDER_PENDING_MAX_AGE_DAYS`), frontend (`VITE_API_BASE_URL`).
@@ -107,4 +106,7 @@ Documentadas em `.env.example` (criado na Phase 1). Grupos previstos: Django (`D
 | Testes do backend falham com erro de conexão | PostgreSQL não está rodando | `docker compose up -d postgres` |
 | `moon` reclama de versão | moon fora de `versionConstraint` | `proto install moon` / atualizar |
 | Tarefa não reexecuta após mudança | arquivo fora dos `inputs` da tarefa | ajustar `fileGroups` no `moon.yml` |
-| Porta em uso | serviço local conflitante | parar o serviço ou mudar a porta no `.env` |
+| Porta em uso | serviço local conflitante | mudar a porta no `.env` (ex.: `POSTGRES_HOST_PORT=15432`) e o `DATABASE_URL` correspondente |
+| `backend:test` "passa" sem banco | resultado veio do cache do moon | `moon run backend:test --force` |
+| `pnpm add` falha com `MINIMUM_RELEASE_AGE_VIOLATION` | versão publicada há menos de 1 dia | usar a versão anterior |
+| Página 404 em HTML no navegador | `DEBUG=True` mostra a página de debug do Django | esperado em dev; com `DEBUG=False` a resposta é JSON |

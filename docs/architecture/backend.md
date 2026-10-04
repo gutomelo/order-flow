@@ -37,8 +37,14 @@ backend/
 └── moon.yml
 ```
 
-Diretórios de `shared/` são criados quando o primeiro uso real aparecer (Phase 1 cria `exceptions`,
-`pagination`, `logging`, `infrastructure`; `events` e `idempotency` chegam com as fases que os usam).
+Diretórios de `shared/` são criados quando o primeiro uso real aparece: a Phase 1 criou
+`exceptions`, `pagination`, `logging` e `infrastructure` (health); `domain`, `events`,
+`permissions` e `idempotency` chegam com as fases que os usam.
+
+**Exceção deliberada na Phase 1:** `apps/identity` já contém o model `User` (UUID como PK, e-mail
+único) e `AUTH_USER_MODEL = "identity.User"`. Trocar o modelo de usuário depois do primeiro
+`migrate` exige reescrever as migrations de `auth`/`admin`; por isso ele nasce junto com o projeto.
+O restante de identity (roles, permissões, JWT) é Phase 2.
 
 ## Camadas
 
@@ -124,6 +130,9 @@ POST /api/v1/orders
   `Http404` → `404 NOT_FOUND`; `Throttled` → `429 RATE_LIMITED`; qualquer outra → `500
   INTERNAL_ERROR` com mensagem genérica (detalhes só no log, com `request_id`).
 - Toda resposta de erro inclui o header `X-Request-ID` para correlação com logs.
+- `handler400/403/404/500` do Django também devolvem o envelope JSON, cobrindo requisições que
+  não chegam a uma view DRF (rota inexistente, `Host` inválido). Com `DEBUG=True` o Django mostra
+  as páginas de debug em HTML, como esperado em desenvolvimento.
 
 ## Transações
 

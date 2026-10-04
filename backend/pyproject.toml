@@ -1,0 +1,124 @@
+[project]
+name = "orderflow-backend"
+version = "0.1.0"
+description = "OrderFlow B2B order and inventory management API (Django modular monolith)."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "celery>=5.6,<6",
+    "django>=5.2.17,<5.3",
+    "django-cors-headers>=4.9",
+    "django-environ>=0.14",
+    "django-filter>=26.2",
+    "djangorestframework>=3.18,<3.19",
+    "drf-spectacular>=0.30",
+    "gunicorn>=26.2",
+    "psycopg[binary]>=3.3",
+    "redis>=6",
+    "structlog>=26.1",
+]
+
+[dependency-groups]
+dev = [
+    "celery-types>=0.26",
+    "django-stubs>=5.2,<5.3",
+    "djangorestframework-stubs>=3.16",
+    "factory-boy>=3.3",
+    "faker>=40",
+    "flower>=2",
+    "import-linter>=2.15",
+    "mypy>=1.18",
+    "pre-commit>=4",
+    "pytest>=9",
+    "pytest-cov>=7",
+    "pytest-django>=4.14",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+# O backend é uma aplicação, não um pacote distribuível.
+package = false
+required-version = ">=0.12"
+
+# ---------------------------------------------------------------------------
+# Ruff — lint e formatação (substitui flake8, isort e Black)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/migrations/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # bugbear
+    "UP",      # pyupgrade
+    "DJ",      # Django
+    "S",       # bandit (segurança)
+    "SIM",     # simplificações
+    "RUF",     # regras do Ruff
+    "DTZ",     # datetime sem timezone
+    "T20",     # print
+    "PLE", "PLW",  # pylint: erros e avisos
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+"**/tests/**/*.py" = ["S101", "S105", "S106"]
+"conftest.py" = ["S101"]
+# Settings por ambiente estendem base.py via star import (padrão Django).
+"config/settings/*.py" = ["F403", "F405"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "shared"]
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = ["/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["environ.*", "factory.*", "drf_spectacular.*", "django_filters.*", "corsheaders.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["tests", "apps"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "unit: teste sem banco de dados",
+    "integration: teste com PostgreSQL real",
+    "concurrency: teste de concorrência (transaction=True, threads)",
+    "slow: teste lento",
+]
+
+# ---------------------------------------------------------------------------
+# import-linter — fronteiras de arquitetura (ADR-001)
+# Contratos por módulo são adicionados pela skill create-django-module.
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["apps", "config", "shared"]
+
+[[tool.importlinter.contracts]]
+name = "shared não depende de módulos de negócio nem do projeto Django"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["apps", "config"]
+
+[[tool.importlinter.contracts]]
+name = "módulos de negócio não dependem do pacote de configuração"
+type = "forbidden"
+source_modules = ["apps"]
+forbidden_modules = ["config"]

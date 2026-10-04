@@ -4,9 +4,9 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 0 — Context Engineering.** Ainda não existe código de aplicação. Não crie
-models, endpoints, telas, autenticação, pedidos ou estoque até a fase correspondente do roadmap
-(`docs/architecture/overview.md#roadmap`).
+**Fase atual: Phase 1 — Foundation concluída; próxima: Phase 2 — Identity.** Existe a fundação
+técnica (Django + `shared/`, Vue + layout, Moonrepo, Docker Compose, CI), sem regras de negócio.
+Não crie models, endpoints ou telas de fases futuras (`docs/architecture/overview.md#roadmap`).
 
 ## Stack
 
@@ -15,7 +15,7 @@ models, endpoints, telas, autenticação, pedidos ou estoque até a fase corresp
 | Backend | Python 3.13, Django 5.2 LTS, Django REST Framework, drf-spectacular, SimpleJWT |
 | Assíncrono | Celery + RabbitMQ (broker), Celery Beat |
 | Dados | PostgreSQL (fonte da verdade), Redis (cache, throttling) |
-| Frontend | Vue 3, TypeScript strict, Vite, Vue Router, Pinia, TanStack Query, Axios, Zod, Vitest |
+| Frontend | Vue 3, TypeScript strict, Vite, Vue Router, Pinia, TanStack Query, Axios, vue-i18n, Tailwind CSS v4 (só tokens), Zod, Vitest |
 | Tooling | uv, Ruff (lint + format), mypy, pnpm, ESLint, Prettier, vue-tsc |
 | Monorepo | Moonrepo v2 (tarefas de engenharia) |
 | Runtime local | Docker Compose (infraestrutura e serviços) |
@@ -37,10 +37,10 @@ Detalhes: `docs/architecture/overview.md`, `backend.md`, `frontend.md`, `event-d
 ## Estrutura do monorepo
 
 ```text
-backend/     Django (uv, pyproject.toml, moon.yml)        → Phase 1
-frontend/    Vue + TS (pnpm, package.json, moon.yml)      → Phase 1
+backend/     Django: config/ apps/ shared/ tests/ (uv, pyproject.toml, moon.yml)
+frontend/    Vue + TS: src/app src/modules src/components src/services (pnpm, moon.yml)
 docs/        architecture/ adr/ domain/ development/ diagrams/
-infra/       docker/ e scripts de infraestrutura          → Phase 1
+infra/       docker/ (Dockerfiles, nginx.conf)
 .moon/       workspace.yml, toolchains.yml
 .claude/     agents/ skills/ commands/ rules/ templates/
 ```
@@ -55,11 +55,11 @@ moon run :lint | :test | :typecheck | :build
 moon run backend:test      # um projeto
 moon ci                    # CI: só tarefas afetadas pelas mudanças
 docker compose up          # postgres, redis, rabbitmq, backend, frontend, celery
-make dev | stop | logs | test | lint | check | build
+make help                  # atalhos: dev, up, stop, logs, test, lint, check, build, migrate...
 ```
 
-Os arquivos `backend/moon.yml`, `frontend/moon.yml`, `docker-compose.yml` e `Makefile` são criados
-na Phase 1 a partir do plano em `docs/architecture/monorepo.md`.
+`backend:test` exige PostgreSQL rodando (`docker compose up -d postgres`). Dentro dos containers,
+use `python manage.py ...` (dependências em `/opt/venv`). Detalhes: `docs/architecture/monorepo.md`.
 
 ## Regras não negociáveis
 

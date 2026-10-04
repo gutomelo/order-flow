@@ -1,0 +1,103 @@
+$schema: '../.moon/cache/schemas/project.json'
+
+language: 'python'
+layer: 'application'
+stack: 'backend'
+tags: ['python', 'django']
+
+project:
+  title: 'OrderFlow API'
+  description: 'Django REST API (modular monolith) and Celery workers.'
+
+# O toolchain Python do moon v2 ainda é experimental (unstable_python); o uv gerencia a versão
+# do Python e as dependências (ADR-009).
+toolchains:
+  default: 'system'
+
+fileGroups:
+  sources:
+    - 'apps/**/*.py'
+    - 'config/**/*.py'
+    - 'shared/**/*.py'
+    - 'manage.py'
+  tests:
+    - 'tests/**/*.py'
+    - 'conftest.py'
+  configs:
+    - 'pyproject.toml'
+    - 'uv.lock'
+    - '.python-version'
+  migrations:
+    - 'apps/**/migrations/*.py'
+
+tasks:
+  install:
+    command: 'uv sync --locked'
+    inputs:
+      - '@group(configs)'
+    options:
+      cache: false
+
+  lint:
+    script: 'uv run --no-sync ruff check . && uv run --no-sync lint-imports'
+    deps: ['~:install']
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '@group(configs)'
+
+  format:
+    command: 'uv run --no-sync ruff format .'
+    deps: ['~:install']
+    options:
+      cache: false
+      runInCI: false
+
+  format-check:
+    command: 'uv run --no-sync ruff format --check .'
+    deps: ['~:install']
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '@group(configs)'
+
+  typecheck:
+    command: 'uv run --no-sync mypy .'
+    deps: ['~:install']
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '@group(configs)'
+
+  test:
+    command: 'uv run --no-sync pytest'
+    deps: ['~:install']
+    env:
+      DJANGO_SETTINGS_MODULE: 'config.settings.test'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '@group(configs)'
+
+  check:
+    # Tarefa agregadora: a documentação do moon v2 não prevê tarefa sem comando.
+    command: 'echo backend checks passed'
+    deps: ['~:lint', '~:format-check', '~:typecheck', '~:test']
+    options:
+      cache: false
+
+  build:
+    # Verifica que o projeto é "implantável": system checks do Django e migrations sincronizadas
+    # com os models. O artefato de deploy (imagem Docker) é construído na CI.
+    script: 'uv run --no-sync python manage.py check && uv run --no-sync python manage.py makemigrations --check --dry-run'
+    deps: ['~:check']
+    env:
+      DJANGO_SETTINGS_MODULE: 'config.settings.test'
+    inputs:
+      - '@group(sources)'
+      - '@group(migrations)'
+      - '@group(configs)'
+
+  dev:
+    command: 'uv run --no-sync python manage.py runserver 0.0.0.0:8000'
+    preset: 'server'

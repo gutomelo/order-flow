@@ -1,0 +1,86 @@
+/*
+ * Design tokens semânticos (docs/architecture/frontend.md).
+ *
+ * Este é o ÚNICO arquivo com valores de cor. `--color-*: initial` remove a paleta padrão do
+ * Tailwind: só existem utilitários derivados destes tokens (bg-surface, text-text-secondary...),
+ * então cores fora do design system nem compilam.
+ *
+ * Dark mode redefine os mesmos tokens; componentes nunca mudam por tema.
+ */
+
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-subtle: #dbeafe;
+  --color-on-primary: #ffffff;
+
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f5f9;
+  --color-border: #e2e8f0;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+
+  --color-sidebar: #0f172a;
+  --color-sidebar-hover: #1e293b;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-active: #ffffff;
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #0284c7;
+
+  --color-focus-ring: #2563eb;
+
+  --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tema escuro explícito (preferência salva pelo usuário). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-primary: #2563eb;
+  --color-primary-hover: #3b82f6;
+  --color-primary-subtle: #1e3a8a;
+  --color-background: #020617;
+  --color-surface: #0f172a;
+  --color-surface-muted: #1e293b;
+  --color-border: #1e293b;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-sidebar: #020617;
+  --color-sidebar-hover: #1e293b;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f87171;
+  --color-info: #38bdf8;
+  --color-focus-ring: #60a5fa;
+}
+
+/* Tema "sistema": segue o sistema operacional, salvo escolha explícita de tema claro. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-primary: #2563eb;
+    --color-primary-hover: #3b82f6;
+    --color-primary-subtle: #1e3a8a;
+    --color-background: #020617;
+    --color-surface: #0f172a;
+    --color-surface-muted: #1e293b;
+    --color-border: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-sidebar: #020617;
+    --color-sidebar-hover: #1e293b;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-danger: #f87171;
+    --color-info: #38bdf8;
+    --color-focus-ring: #60a5fa;
+  }
+}

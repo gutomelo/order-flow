@@ -12,7 +12,10 @@ frontend/src/
 │   ├── layouts/          # AppLayout (sidebar + topbar), AuthLayout
 │   ├── providers/        # QueryClient, i18n, pinia
 │   ├── i18n/locales/     # pt-BR (chaves em inglês)
-│   └── styles/           # tokens.css, base.css
+│   ├── pages/            # páginas transversais (NotFoundPage)
+│   ├── stores/           # Pinia: client state (ui; session na Phase 2)
+│   ├── navigation.ts     # itens da sidebar
+│   └── styles/           # tokens.css, main.css
 ├── modules/              # features
 │   ├── auth/  dashboard/  customers/  suppliers/  products/  inventory/
 │   └── orders/  payments/  users/  settings/
@@ -20,7 +23,8 @@ frontend/src/
 ├── composables/          # composables genéricos (useConfirm, usePagination, useToast)
 ├── services/
 │   └── http/             # cliente Axios, interceptors, normalização de erro
-├── types/                # tipos globais e tipos gerados do OpenAPI
+├── testing/              # helpers de teste (mountWithPlugins)
+├── types/                # tipos globais e tipos gerados do OpenAPI (Phase 2)
 └── utils/                # formatação de moeda/data, helpers puros
 ```
 
@@ -137,8 +141,18 @@ permissões do usuário (UX; o backend continua autorizando).
   e botão com o verbo da ação.
 - **Toast**: feedback de sucesso/erro de mutations.
 
-Biblioteca de primitivas acessíveis (headless) e utilitário de CSS: decididos na Phase 1 e
-registrados aqui, mantendo os tokens acima como única fonte de cor.
+### Decisões de implementação (Phase 1)
+
+| Tema | Decisão | Por quê |
+| --- | --- | --- |
+| Estilo | **Tailwind CSS v4** com `--color-*: initial` em `src/app/styles/tokens.css` | a paleta padrão é removida: só existem utilitários gerados dos tokens semânticos (`bg-surface`, `text-text-secondary`), então cores fora do design system nem compilam — a regra "sem hex em componentes" é garantida pela ferramenta |
+| Dark mode | mesmos tokens redefinidos em `[data-theme="dark"]` e em `prefers-color-scheme` | componentes não conhecem o tema; preferência (claro/escuro/sistema) no store `ui` |
+| Primitivas headless | **adiadas para a Phase 2** (avaliar Reka UI) | ainda não há diálogos/menus complexos; o drawer mobile usa `<dialog>` nativo (focus trap, Esc, `inert`) |
+| Ícones | `@lucide/vue` | SVGs tree-shakeable, sempre com `aria-hidden` + texto |
+| Fonte | Inter self-hosted (`@fontsource-variable/inter`) | sem CDN externo (privacidade, CSP) |
+| TypeScript | ~6.0 (versão usada pelo `create-vue` oficial) | TS 7 ainda não é suportado pelo `vue-tsc` |
+
+Validação: Lighthouse (desktop) Accessibility 100 e Best Practices 100 no dashboard.
 
 ### Dashboard
 

@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: ['master']
+  pull_request:
+  schedule:
+    # Execução completa diária, sem filtro de afetados (confiabilidade acima de otimização).
+    - cron: '0 6 * * *'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Moon checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: orderflow
+          POSTGRES_PASSWORD: orderflow
+          POSTGRES_DB: orderflow
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U orderflow"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://orderflow:orderflow@localhost:5432/orderflow
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Histórico completo: necessário para o moon detectar arquivos afetados.
+          fetch-depth: 0
+          filter: 'blob:none'
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: '0.12.23'
+
+      # Instala proto + moon (versão em .prototools); Node e pnpm vêm de .moon/toolchains.yml.
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Run affected tasks
+        if: github.event_name != 'schedule'
+        run: moon ci
+
+      - name: Run all tasks
+        if: github.event_name == 'schedule'
+        run: moon run :check :build
+
+      - name: Upload moon report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: moon-report
+          path: .moon/cache/*Report.json
+          if-no-files-found: ignore
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build backend image
+        run: docker build --file infra/docker/backend.Dockerfile --target production --tag orderflow-backend:ci .
+      - name: Build frontend image
+        run: docker build --file infra/docker/frontend.Dockerfile --target production --tag orderflow-frontend:ci .

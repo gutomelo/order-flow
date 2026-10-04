@@ -44,15 +44,13 @@ Mudanças relevantes em relação ao v1 que afetam este repositório:
 
 Arquivos:
 
-| Arquivo | Estado | Conteúdo |
-| --- | --- | --- |
-| `.moon/workspace.yml` | criado (Phase 0) | projetos `backend`/`frontend`, VCS `git`/`master`, `versionConstraint` |
-| `.moon/toolchains.yml` | criado (Phase 0) | `javascript` (pnpm), `node`, `pnpm` com versões fixadas |
-| `backend/moon.yml` | Phase 1 (plano abaixo) | tarefas Python via `uv` |
-| `frontend/moon.yml` | Phase 1 (plano abaixo) | tarefas TypeScript/Vue |
-
-> Até a Phase 1 criar `backend/` e `frontend/`, comandos `moon` falham por projetos inexistentes.
-> Isso é esperado.
+| Arquivo | Conteúdo |
+| --- | --- |
+| `.prototools` | versão do moon (2.5.6), lida pelo `proto install` e pela CI |
+| `.moon/workspace.yml` | projetos `backend`/`frontend`, VCS `git`/`master`, `versionConstraint` |
+| `.moon/toolchains.yml` | `javascript` (pnpm), `node`, `pnpm` com versões fixadas |
+| [`backend/moon.yml`](../../backend/moon.yml) | tarefas Python via `uv` (toolchain `system`) |
+| [`frontend/moon.yml`](../../frontend/moon.yml) | tarefas TypeScript/Vue (toolchains `javascript`/`node`/`pnpm` detectados) |
 
 Esquemas JSON para validação no editor: `moon sync config-schemas` gera `.moon/cache/schemas/`
 (referenciados por `$schema` no topo de cada arquivo).
@@ -112,317 +110,78 @@ flowchart LR
 `frontend:test` depende de `typecheck` (erros de tipo falham antes e mais barato que os testes).
 `backend:build` depende de `backend:check` (não "empacotamos" backend que não passou nas verificações).
 
-## Plano: `backend/moon.yml` (Phase 1)
+## Notas de implementação das tarefas
 
-```yaml
-$schema: '../.moon/cache/schemas/project.json'
+Os arquivos `moon.yml` são a fonte da verdade; pontos não óbvios:
 
-language: 'python'
-layer: 'application'
-stack: 'backend'
-tags: ['python', 'django']
+- **`check` usa `echo`**: a documentação do moon v2 não prevê tarefa sem comando; a tarefa existe
+  para agregar `deps` sob um nome único.
+- **Backend usa `uv run --no-sync`**: a sincronização do ambiente acontece uma vez em
+  `backend:install` (`uv sync --locked`, sem cache); as demais tarefas não repetem esse trabalho.
+- **`backend:build`** roda `manage.py check` e `makemigrations --check --dry-run`: o backend é
+  "implantável" quando os system checks passam e não há migration pendente. O artefato de deploy
+  (imagem Docker) é construído em job próprio da CI.
+- **`backend:test` depende de PostgreSQL** (serviço externo ao moon): localmente via Docker
+  Compose, na CI via service container. Como o banco não é input da tarefa, o cache do moon pode
+  pular a suíte se o código não mudou — use `moon run backend:test --force` para forçar.
+- **Frontend instala dependências automaticamente** pelo toolchain JavaScript (`pnpm install` no
+  projeto, que não tem `package.json` na raiz do repositório).
 
-project:
-  title: 'OrderFlow API'
-  description: 'Django REST API (modular monolith) and Celery workers.'
+### Validação (Phase 1)
 
-# Toolchain Python do moon v2 é experimental; uv cuida de Python e dependências.
-toolchains:
-  default: 'system'
+Executado com moon 2.5.6 no repositório real: `moon run :check :build` → 13 tarefas verdes;
+segunda execução 10/13 do cache em ~120 ms; `moon ci` → 17 ações aprovadas.
 
-fileGroups:
-  sources:
-    - 'apps/**/*.py'
-    - 'config/**/*.py'
-    - 'shared/**/*.py'
-    - 'manage.py'
-  tests:
-    - 'tests/**/*.py'
-    - 'conftest.py'
-  configs:
-    - 'pyproject.toml'
-    - 'uv.lock'
-    - '.python-version'
-  migrations:
-    - 'apps/**/migrations/*.py'
+## pnpm e políticas de supply chain
 
-tasks:
-  install:
-    command: 'uv sync --locked'
-    inputs:
-      - '@group(configs)'
-    options:
-      cache: false
+O pnpm 12 vem com duas proteções ativas por padrão, mantidas no projeto:
 
-  lint:
-    script: 'uv run ruff check . && uv run lint-imports'
-    deps: ['~:install']
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-      - '@group(configs)'
+- **Scripts de build de dependências bloqueados**: cada exceção é declarada em
+  `frontend/pnpm-workspace.yaml` (`allowBuilds`). Hoje só `vue-demi: false` (script desnecessário
+  com Vue 3).
+- **`minimumReleaseAge`**: versões publicadas há menos de um dia são rejeitadas. Se um
+  `pnpm add` falhar por isso, escolha a versão anterior em vez de criar exceção.
 
-  format:
-    command: 'uv run ruff format .'
-    deps: ['~:install']
-    options:
-      cache: false
-      runInCI: false
+## CI (GitHub Actions)
 
-  format-check:
-    command: 'uv run ruff format --check .'
-    deps: ['~:install']
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-      - '@group(configs)'
+Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
-  typecheck:
-    command: 'uv run mypy .'
-    deps: ['~:install']
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-      - '@group(configs)'
+| Job | O que faz |
+| --- | --- |
+| `checks` | checkout com `fetch-depth: 0` → `astral-sh/setup-uv` → `moonrepo/setup-toolchain` (moon do `.prototools`) → `moon ci`; PostgreSQL como service container |
+| `docker` | build das imagens de produção do backend e do frontend (valida os Dockerfiles) |
 
-  test:
-    command: 'uv run pytest'
-    deps: ['~:install']
-    env:
-      DJANGO_SETTINGS_MODULE: 'config.settings.test'
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-      - '@group(configs)'
-
-  check:
-    command: 'echo backend checks passed'
-    deps: ['~:lint', '~:format-check', '~:typecheck', '~:test']
-    options:
-      cache: false
-
-  build:
-    script: 'uv run python manage.py check && uv run python manage.py makemigrations --check --dry-run'
-    deps: ['~:check']
-    env:
-      DJANGO_SETTINGS_MODULE: 'config.settings.test'
-    inputs:
-      - '@group(sources)'
-      - '@group(migrations)'
-      - '@group(configs)'
-
-  dev:
-    command: 'uv run python manage.py runserver 0.0.0.0:8000'
-    preset: 'server'
-```
-
-Notas:
-
-- `check` usa um `echo` porque a documentação do moon v2 não documenta tarefas sem comando; a tarefa
-  existe para agregar `deps` sob um nome único.
-- `test` precisa de PostgreSQL acessível (variáveis `DATABASE_URL` etc. vindas do ambiente).
-  Localmente: `docker compose up -d postgres redis rabbitmq`. Na CI: service containers.
-- O "artefato" de deploy do backend é a imagem Docker, construída em job próprio da CI (fora do moon).
-
-## Plano: `frontend/moon.yml` (Phase 1)
-
-```yaml
-$schema: '../.moon/cache/schemas/project.json'
-
-language: 'typescript'
-layer: 'application'
-stack: 'frontend'
-tags: ['vue', 'typescript']
-
-project:
-  title: 'OrderFlow Web'
-  description: 'Vue 3 + TypeScript SPA for the OrderFlow B2B platform.'
-
-fileGroups:
-  sources:
-    - 'src/**/*'
-    - 'index.html'
-    - 'public/**/*'
-  tests:
-    - 'src/**/*.spec.ts'
-    - 'src/**/*.test.ts'
-  configs:
-    - 'package.json'
-    - 'pnpm-lock.yaml'
-    - 'tsconfig*.json'
-    - 'vite.config.ts'
-    - 'vitest.config.ts'
-    - 'eslint.config.*'
-    - '.prettierrc*'
-
-tasks:
-  lint:
-    command: 'pnpm exec eslint .'
-    inputs:
-      - '@group(sources)'
-      - '@group(configs)'
-
-  format:
-    command: 'pnpm exec prettier --write .'
-    options:
-      cache: false
-      runInCI: false
-
-  format-check:
-    command: 'pnpm exec prettier --check .'
-    inputs:
-      - '@group(sources)'
-      - '@group(configs)'
-
-  typecheck:
-    command: 'pnpm exec vue-tsc --build'
-    inputs:
-      - '@group(sources)'
-      - '@group(configs)'
-
-  test:
-    command: 'pnpm exec vitest run'
-    deps: ['~:typecheck']
-    inputs:
-      - '@group(sources)'
-      - '@group(configs)'
-
-  check:
-    command: 'echo frontend checks passed'
-    deps: ['~:lint', '~:format-check', '~:typecheck', '~:test']
-    options:
-      cache: false
-
-  build:
-    command: 'pnpm exec vite build'
-    deps: ['~:typecheck']
-    inputs:
-      - '@group(sources)'
-      - '@group(configs)'
-    outputs:
-      - 'dist/**/*'
-
-  dev:
-    command: 'pnpm exec vite --host 0.0.0.0'
-    preset: 'server'
-```
-
-A tarefa `generate-api-types` (OpenAPI → TypeScript) entra na Phase 2 via skill `create-moon-task`.
-
-### Validação já feita (Phase 0)
-
-Os dois planos acima, junto com `.moon/workspace.yml` e `.moon/toolchains.yml`, foram carregados
-pelo **moon 2.5.6** em um workspace temporário (`moon query projects` e `moon task` para cada
-tarefa). Resultado: configuração aceita sem erros; backend resolvido com toolchain `system`;
-frontend com `javascript`, `node` e `pnpm` detectados automaticamente; `deps`, `runInCI` e
-`preset: 'server'` resolvidos como esperado. Tarefas sem `inputs` (ex.: `check`) passam a
-considerar todo o projeto (`<projeto>/**/*`) como input.
-
-### Pontos a validar na Phase 1 (execução real)
-
-- Instalação de dependências do frontend sem `package.json` na raiz (projeto JS isolado).
-- Comportamento do cache de `test` do backend (dependência de serviços externos não é input).
-- Versões fixadas em `.moon/toolchains.yml` (Node 24 LTS, pnpm) compatíveis com as dependências.
-
-## CI (GitHub Actions) — plano
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches: ['master']
-  pull_request:
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: orderflow
-          POSTGRES_PASSWORD: orderflow
-          POSTGRES_DB: orderflow
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U orderflow"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-      redis:
-        image: redis:7
-        ports: ['6379:6379']
-    env:
-      DATABASE_URL: postgres://orderflow:orderflow@localhost:5432/orderflow
-      REDIS_URL: redis://localhost:6379/0
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0          # necessário para detectar arquivos afetados
-          filter: 'blob:none'
-      - uses: astral-sh/setup-uv@v6   # fixar a major vigente na Phase 1
-      - uses: moonrepo/setup-toolchain@v0
-      - run: moon ci
-```
-
-- `moon ci` executa apenas tarefas **afetadas** pelas mudanças (PR: comparação com `master`) e
-  respeita `runInCI` (`format` e `dev` ficam fora). Mudança só no frontend não executa tarefas
-  do backend.
-- Confiabilidade acima de otimização: alterações em arquivos de configuração compartilhados
-  (`.moon/**`, workflow) devem disparar tudo; um job agendado (nightly) roda `moon run :check`
+- `moon ci` executa apenas tarefas **afetadas** pelas mudanças e respeita `runInCI` (`format` e
+  `dev` ficam fora). Mudança só no frontend não executa tarefas do backend.
+- Confiabilidade acima de otimização: um agendamento diário roda `moon run :check :build`
   completo, sem filtro de afetados.
-- Relatório `.moon/cache/ciReport.json` publicado como artifact do job.
-- Job separado (Phase 1+) constrói as imagens Docker para validar os Dockerfiles.
-- Cache remoto de tarefas do moon (`remote` no workspace) é evolução futura, não necessário agora.
+- O relatório do moon (`.moon/cache/*Report.json`) é publicado como artifact.
+- Cache remoto de tarefas do moon (`remote` no workspace) é evolução futura.
 
-## Docker Compose — plano
+## Docker Compose
 
-```text
-services:
-  postgres        postgres:17, volume nomeado, healthcheck pg_isready
-  redis           redis:7, healthcheck redis-cli ping
-  rabbitmq        rabbitmq:4-management, healthcheck rabbitmq-diagnostics ping
-  backend         build infra/docker/backend.Dockerfile, runserver, depends_on (healthy)
-  celery-worker   mesma imagem, `celery -A config worker -Q default,notifications,integrations,maintenance`
-  celery-beat     mesma imagem, `celery -A config beat`
-  frontend        build infra/docker/frontend.Dockerfile, vite dev server
-  flower          profile "tools", opcional
-```
+Arquivo: [`docker-compose.yml`](../../docker-compose.yml). Dockerfiles em `infra/docker/`
+(contexto de build = raiz do repositório, filtrado por `.dockerignore`).
 
-Versões exatas das imagens fixadas na Phase 1.
+| Serviço | Imagem | Observações |
+| --- | --- | --- |
+| `postgres` | `postgres:17-alpine` | volume `postgres-data`, healthcheck `pg_isready` |
+| `redis` | `redis:7.4-alpine` | healthcheck `redis-cli ping` |
+| `rabbitmq` | `rabbitmq:4.1-management-alpine` | UI em `:15672`, healthcheck `rabbitmq-diagnostics ping` |
+| `backend` | `backend.Dockerfile` (target `dev`) | `migrate` + `runserver`; healthcheck em `/health/live` |
+| `celery-worker` | mesma imagem | filas `default,notifications,integrations,maintenance`; healthcheck `celery inspect ping` |
+| `celery-beat` | mesma imagem | schedule em `/tmp` (o usuário do container não escreve no código montado) |
+| `frontend` | `frontend.Dockerfile` (target `dev`) | Vite com proxy de `/api` e `/health` para `backend:8000` |
+| `flower` | mesma imagem do backend | opcional: `docker compose --profile tools up flower` |
 
-## Makefile — plano
+- Funciona **sem `.env`** (defaults locais). Portas do host configuráveis via `.env`
+  (`POSTGRES_HOST_PORT`, `BACKEND_HOST_PORT`...), úteis quando 5432/6379 já estão em uso.
+- Imagens próprias rodam com usuário não-root; dependências Python ficam em `/opt/venv` (fora do
+  volume do código), então comandos no container usam `python manage.py ...` diretamente.
+- Target `production`: backend com gunicorn e só dependências de runtime; frontend estático no
+  nginx (`infra/docker/nginx.conf`) com fallback de SPA.
 
-```makefile
-.PHONY: dev stop logs ps test lint typecheck check build format migrate shell
+## Makefile
 
-dev:        ## sobe o ambiente completo
-	docker compose up
-stop:
-	docker compose down
-logs:
-	docker compose logs -f
-ps:
-	docker compose ps
-test:
-	moon run :test
-lint:
-	moon run :lint
-typecheck:
-	moon run :typecheck
-check:
-	moon run :check
-build:
-	moon run :build
-format:
-	moon run :format
-migrate:
-	docker compose exec backend uv run python manage.py migrate
-shell:
-	docker compose exec backend uv run python manage.py shell
-```
-
-O Makefile não contém lógica de pipeline: cada alvo é uma linha que delega.
+Arquivo: [`Makefile`](../../Makefile). `make help` lista os alvos. Cada alvo é uma linha que delega
+para `moon run :<tarefa>` ou `docker compose ...` — nenhuma lógica de pipeline vive nele.
