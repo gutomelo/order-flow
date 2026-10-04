@@ -176,13 +176,26 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | `DataTable` (genérico, slots `cell-<key>`) | estados obrigatórios (skeleton, erro com retry, vazio × sem resultado de filtro), paginação, `caption`, scroll horizontal |
 | `useUrlFilters` | filtros e página na query string, com parsers por campo; `page` volta a 1 quando um filtro muda |
 | `SearchInput` | busca com debounce, sincronizada com a URL |
-| `useActivationToggle` | ativar/inativar com confirmação, feedback e tratamento de erro |
+| `useActivationToggle` | ativar/inativar com confirmação; sucesso vira toast, **erro aparece dentro do diálogo** (ver Phase 4) |
 | `useZodForm` | passou a mostrar no **próprio campo** erros de domínio com `details.field` (ex.: `INVALID_BARCODE`), não só erros de validação |
 
 - Ações de gestão e colunas dependentes de outras permissões são ocultadas, e as consultas
   correspondentes **nem são feitas** (ex.: SALES lê o catálogo, mas não consulta fornecedores).
 - Texto com estado anexado (`Sul Express (inativo)`) é renderizado como um único nó de texto:
   nós separados perdem o espaço para leitores de tela.
+
+### Decisões de implementação (Phase 4)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| `ProductPicker` com **Reka UI** `Combobox` (busca no servidor, debounce de 250 ms) | escolher 1 entre milhares de produtos; um `<select>` não escala e um combobox acessível (teclado, `aria-activedescendant`, anúncios) é caro de acertar à mão | combobox próprio; Headless UI (sem Vue 3 ativo); carregar todos os produtos num `<select>` |
+| Combobox **sem portal** dentro de `<dialog>` | o `<dialog>` modal fica na *top layer* e deixa o resto da página inerte: uma lista "portada" para o `body` fica atrás do backdrop e não recebe clique | portal + `z-index` (não vence a top layer) |
+| Erros **dentro** de diálogos modais (`ConfirmDialog` ganhou `error`) | pelo mesmo motivo, um toast disparado com o modal aberto fica invisível e não é anunciado — a inativação de depósito com saldo (409) falhava "em silêncio" em todas as telas com ativar/inativar | toast com `z-index` maior; fechar o diálogo antes de mostrar o erro (a pessoa perde o contexto) |
+| Mutations de estoque invalidam `inventoryKeys.all` em `onSettled` (não só em `onSuccess`) | um 409 de conflito significa que **a tela está desatualizada**: precisa recarregar justamente no erro | invalidar só no sucesso |
+| `mutationFn: (input) => api(input)` | o TanStack Query v5 passa um 2º argumento (contexto) à `mutationFn`; repassar a função da API direto enviaria esse objeto como parâmetro | — |
+| Ajuste envia o saldo exibido como `expected_on_hand`; no `STOCK_CHANGED_SINCE_COUNT` o diálogo **recarrega o item**, mostra "mudou de X para Y" e recalcula a diferença | sem isso o diálogo guardava o saldo antigo e todo reenvio falhava; com recarga silenciosa, a contagem seria aplicada sobre um saldo que a pessoa não viu | sobrescrever sem checar (perde movimentações); pedir para fechar e reabrir |
+| `SelectField` usa `aria-required` em vez de `required` | os formulários usam `novalidate`; o `required` nativo num `<select>` vazio é exposto como `invalid` antes de qualquer interação | — |
+| Filtro de datas em movimentações converte o **dia local** para limites UTC (`localDayBoundsToUtc`) | "movimentações de 04/10" deve significar o dia no fuso da pessoa, não em UTC | mandar a data crua e deixar o backend supor o fuso |
 
 ### Dashboard
 

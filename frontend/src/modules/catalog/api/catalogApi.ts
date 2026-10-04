@@ -58,3 +58,11 @@ export async function setCategoryActive(id: string, active: boolean) {
   )
   return data
 }
+
+/** Busca para seletores (combobox): produtos ativos, poucos resultados por vez. */
+export async function searchActiveProducts(term: string) {
+  const { data } = await http.get<Paginated<Product>>('/products', {
+    params: { search: term, is_active: true, page_size: 20, ordering: 'name' },
+  })
+  return data.results
+}

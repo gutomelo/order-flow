@@ -80,6 +80,23 @@ Particularidades do nosso caso:
 - Hot row em item muito popular → monitorar tempo de espera de lock; alternativa de UPDATE
   condicional documentada acima.
 
+### Implementação (Phase 4)
+
+A Phase 4 aplicou a decisão a recebimentos, ajustes e transferências por meio de um único ledger
+(`apps/inventory/application/ledger.py`), antes de existirem reservas:
+
+- **Ordem global de locks:** depósitos (`FOR SHARE`, ordenados por `id`) → `StockItem`
+  (`FOR UPDATE`, ordenados por `id`). O `FOR SHARE` deixa movimentações no mesmo depósito em
+  paralelo, mas serializa com a inativação (`FOR UPDATE`), que exige saldo zerado. Há SQL manual,
+  parametrizado, porque o ORM não expõe `FOR SHARE`.
+- Itens ausentes são criados com `bulk_create(ignore_conflicts=True)` antes do lock, para que dois
+  recebimentos concorrentes do mesmo produto não disputem o `INSERT`.
+- Como as linhas estão bloqueadas, o saldo novo é calculado em Python e gravado como valor absoluto
+  (equivalente a `F()` sob lock), o que dá `on_hand_after`/`reserved_after` exatos no movimento.
+- `available` é uma `GeneratedField` persistida; os movimentos são append-only por trigger.
+- `lock_timeout` + `STOCK_BUSY` ficam para a Phase 7 (reservas), quando a disputa por item passa
+  a ser real; até lá as transações são curtas e não há I/O externo dentro delas.
+
 ### Quando revisitar
 
 Se métricas mostrarem p95 de espera por lock relevante em itens específicos, ou se a reserva passar

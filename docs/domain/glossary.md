@@ -61,6 +61,9 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Ponto de reposição | `reorder_point` | Limite abaixo do qual o item é "estoque baixo" |
 | Ajuste de inventário | `ADJUSTMENT` | Correção manual de `on_hand` com motivo obrigatório |
 | Transferência | `TRANSFER` | Movimento entre depósitos |
+| Recebimento de mercadoria | `StockReceipt` | Entrada de produtos num depósito (movimentos `PURCHASE`), opcionalmente ligada a fornecedor e nota fiscal |
+| Código do depósito | `Warehouse.code` | Identificador curto e único na organização (`CD-SP`), em maiúsculas |
+| Saldo esperado | `expected_on_hand` | Saldo físico que a pessoa viu ao contar; se mudou, o ajuste é recusado (`STOCK_CHANGED_SINCE_COUNT`) |
 
 ## Financeiro e logística
 

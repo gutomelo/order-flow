@@ -82,6 +82,12 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   era reproduzida. Foi reescrito com uma barreira entre "contar" e "gravar".
 - Phase 3: sem a regra de ciclo de categorias, a suíte **travava** em vez de falhar, revelando
   laços sem proteção na leitura da árvore. As leituras passaram a tolerar ciclos.
+- Phase 4: removidos um a um o `FOR SHARE` no depósito, o `select_for_update` dos itens e o
+  `ON CONFLICT DO NOTHING` — cada teste de concorrência correspondente falhou. A primeira tentativa
+  de quebrar a **ordem** dos locks não provou nada (a ordem continuava global); refeita como
+  "origem → destino", o PostgreSQL detectou o deadlock e o teste falhou, como esperado. No
+  frontend, enviar o saldo antigo como `expected_on_hand` após um conflito e mostrar o erro de
+  inativação como toast (atrás do `<dialog>` modal) fazem os testes falharem.
 
 ## Teste de concorrência — esqueleto
 

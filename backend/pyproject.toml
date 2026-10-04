@@ -169,4 +169,19 @@ forbidden_modules = ["apps.catalog"]
 [[tool.importlinter.contracts]]
 name = "módulos não importam api/ de outros módulos"
 type = "independence"
-modules = ["apps.identity.api", "apps.suppliers.api", "apps.catalog.api"]
+modules = ["apps.identity.api", "apps.suppliers.api", "apps.catalog.api", "apps.inventory.api"]
+
+[[tool.importlinter.contracts]]
+name = "inventory: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.inventory.api",
+    "apps.inventory.application",
+    "apps.inventory.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "catálogo e fornecedores não conhecem o estoque"
+type = "forbidden"
+source_modules = ["apps.catalog", "apps.suppliers"]
+forbidden_modules = ["apps.inventory"]

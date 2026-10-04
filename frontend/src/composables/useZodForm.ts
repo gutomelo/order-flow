@@ -67,7 +67,7 @@ export function useZodForm<Schema extends z.ZodObject>(
    */
   async function submit(
     action: (data: z.output<Schema>) => Promise<unknown>,
-    onError?: (error: unknown) => void,
+    onError?: (error: unknown) => unknown,
   ): Promise<boolean> {
     if (isSubmitting.value) return false
     formError.value = null
@@ -78,7 +78,7 @@ export function useZodForm<Schema extends z.ZodObject>(
       await action(data)
       return true
     } catch (error) {
-      if (!applyServerError(error)) onError?.(error)
+      if (!applyServerError(error)) await onError?.(error)
       return false
     } finally {
       isSubmitting.value = false

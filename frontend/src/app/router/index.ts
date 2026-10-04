@@ -13,6 +13,7 @@ import { authRoutes } from '@/modules/auth/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
+import { inventoryRoutes } from '@/modules/inventory/routes'
 import { suppliersRoutes } from '@/modules/suppliers/routes'
 import { usersRoutes } from '@/modules/users/routes'
 
@@ -41,6 +42,7 @@ export const routes: RouteRecordRaw[] = [
       ...dashboardRoutes,
       ...catalogRoutes,
       ...suppliersRoutes,
+      ...inventoryRoutes,
       ...usersRoutes,
       {
         path: 'forbidden',

@@ -37,7 +37,7 @@ const id = useId()
     <select
       :id="id"
       v-model="model"
-      :required="required"
+      :aria-required="required || undefined"
       :disabled="disabled"
       :aria-invalid="error ? true : undefined"
       :aria-describedby="error ? `${id}-error` : help ? `${id}-help` : undefined"

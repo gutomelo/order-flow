@@ -11,6 +11,8 @@ const {
   required = false,
   autocomplete,
   placeholder,
+  inputmode,
+  hideLabel = false,
 } = defineProps<{
   label: string
   type?: 'text' | 'email' | 'password' | 'search'
@@ -19,6 +21,8 @@ const {
   required?: boolean
   autocomplete?: string
   placeholder?: string
+  inputmode?: 'numeric' | 'text'
+  hideLabel?: boolean
 }>()
 
 const id = useId()
@@ -26,7 +30,11 @@ const id = useId()
 
 <template>
   <div class="flex flex-col gap-1.5">
-    <label :for="id" class="text-sm font-medium text-text-primary">
+    <label
+      :for="id"
+      class="text-sm font-medium text-text-primary"
+      :class="{ 'sr-only': hideLabel }"
+    >
       {{ label }}<span v-if="required" class="text-danger" aria-hidden="true"> *</span>
     </label>
     <input
@@ -36,6 +44,7 @@ const id = useId()
       :required="required"
       :autocomplete="autocomplete"
       :placeholder="placeholder"
+      :inputmode="inputmode"
       :aria-invalid="error ? true : undefined"
       :aria-describedby="
         [error ? `${id}-error` : '', help ? `${id}-help` : ''].join(' ').trim() || undefined

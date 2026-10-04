@@ -1,7 +1,8 @@
 # Domínio: Inventory (Estoque)
 
-> Fonte da verdade das regras de estoque. Implementação prevista nas Phases 4 (saldo e movimentos)
-> e 7 (reservas). Decisão de concorrência: [ADR-008](../adr/008-stock-concurrency-control.md).
+> Fonte da verdade das regras de estoque. Phase 4 implementou depósitos, saldo, movimentações,
+> recebimentos, ajustes e transferências; reservas chegam na Phase 7.
+> Decisão de concorrência: [ADR-008](../adr/008-stock-concurrency-control.md).
 
 ## Responsabilidade
 
@@ -99,6 +100,57 @@ são feitas com novos movimentos (`ADJUSTMENT`).
 `on_hand_after`/`reserved_after` guardam o saldo resultante — permitem auditoria e reconciliação
 sem recalcular todo o histórico.
 
+Na Phase 4 a imutabilidade é garantida **no banco**: um trigger rejeita `UPDATE` e `DELETE` em
+`inventory_stock_movement`. Nem código novo, nem script manual, nem o Django admin conseguem
+reescrever o histórico.
+
+## Depósitos (`Warehouse`)
+
+| # | Regra | Garantida em |
+| --- | --- | --- |
+| W1 | Código curto (`[A-Z0-9-]{2,20}`, maiúsculas) único por organização | serviço + UNIQUE + CHECK |
+| W2 | Depósito inativo não recebe movimentações (recebimento, ajuste, transferência) | serviço |
+| W3 | Só pode ser inativado com saldo zero (`on_hand = 0` e `reserved = 0` em todos os itens) | serviço, com lock dos itens |
+
+## Recebimento (`StockReceipt`)
+
+Documento de entrada de mercadoria: depósito, fornecedor (opcional), número do documento
+(nota fiscal, opcional), observações e **linhas** (produto + quantidade). Cada linha gera um
+movimento `PURCHASE` referenciando o recebimento.
+
+| # | Regra |
+| --- | --- |
+| R1 | Pelo menos uma linha; quantidades inteiras > 0; um produto aparece uma vez por recebimento |
+| R2 | Produtos ativos da organização; fornecedor, se informado, ativo |
+| R3 | Número do documento único por (organização, fornecedor): a mesma nota não entra duas vezes (deduplicação natural contra envio repetido) |
+| R4 | Tudo-ou-nada: qualquer linha inválida desfaz o recebimento inteiro |
+
+Recebimento é a operação que cria o `StockItem` de um produto em um depósito. Dois recebimentos
+simultâneos do mesmo produto novo no mesmo depósito não podem criar dois itens: o item é criado com
+`INSERT ... ON CONFLICT DO NOTHING` e só então bloqueado (`SELECT ... FOR UPDATE`).
+
+## Ajuste por contagem (`ADJUSTMENT`)
+
+O usuário informa a **quantidade contada** (não um delta), o **motivo** e a quantidade que via na
+tela ao contar (`expected_on_hand`).
+
+| # | Regra |
+| --- | --- |
+| A1 | Motivo obrigatório (mín. 5 caracteres) |
+| A2 | `expected_on_hand` diferente do saldo atual → `409 STOCK_CHANGED_SINCE_COUNT`: houve movimentação entre a contagem e o envio; recontar evita sobrescrevê-la |
+| A3 | Quantidade contada não pode ser menor que `reserved` (`INVALID_ADJUSTMENT`) |
+| A4 | Contagem igual ao saldo não gera movimento (delta zero) |
+
+A regra A2 é um **controle otimista** sobre uma operação humana longa (contar prateleiras leva
+minutos), combinado com o lock pessimista curto da gravação (ADR-008).
+
+## Transferência (`TRANSFER`)
+
+Origem e destino distintos e ativos, produto da organização, quantidade > 0 e
+`available` na origem ≥ quantidade. Gera dois movimentos com o mesmo `reference_id`. Os dois
+`StockItem` são bloqueados em ordem de `id`, então transferências opostas simultâneas (A→B e B→A)
+não entram em deadlock.
+
 ## Reservas (`StockReservation`)
 
 | Status | Significado | Próximos |
@@ -164,13 +216,19 @@ Resultado: exatamente um 201; o outro 409 INSUFFICIENT_STOCK
 | `ConfirmReservation` | orders (`PayOrder`) | — (interno) | — |
 | `ReleaseReservation` | orders (`CancelOrder`, `ExpireUnpaidOrder`) | — (interno) | `StockReleased` / `StockReservationExpired` |
 | `ConsumeReservation` | orders (`ShipOrder`) | — (interno) | `StockConsumed` |
-| `ReceivePurchase` | API `POST /api/v1/inventory/receipts` | `inventory:update` | `StockReceived` |
+| `ReceiveStock` | API `POST /api/v1/inventory/receipts` | `inventory:update` | `StockReceived` |
 | `AdjustStock` | API `POST /api/v1/inventory/adjustments` | `inventory:adjust` | `StockAdjusted` |
 | `TransferStock` | API `POST /api/v1/inventory/transfers` | `inventory:update` | `StockTransferred` |
+| Depósitos | `GET/POST /api/v1/inventory/warehouses`, `PATCH .../{id}`, `.../activate`, `.../deactivate` | `inventory:read` / `inventory:update` | — |
+| Ponto de reposição | `PATCH /api/v1/inventory/stock-items/{id}` (`reorder_point`) | `inventory:update` | — |
 | `ReturnToStock` | orders (`CompleteReturn`) | — (interno) | `StockReturned` |
 
-Leituras: `GET /api/v1/inventory/stock-items` (filtros por produto, depósito, `low_stock=true`),
-`GET /api/v1/inventory/movements` (paginado, filtros por item, tipo, período).
+Leituras: `GET /api/v1/inventory/stock-items` (filtros por produto, depósito, busca por SKU/nome,
+`low_stock=true` ⇒ `available <= reorder_point`), `GET /api/v1/inventory/movements` (paginado, filtros
+por produto, depósito, tipo e período, mais recentes primeiro).
+
+Na Phase 4 os eventos de estoque ainda não são publicados (a infraestrutura de Domain Events chega
+com pedidos); os movimentos já são o registro completo, e cada operação gera log estruturado.
 
 ## Eventos
 
@@ -191,6 +249,12 @@ Leituras: `GET /api/v1/inventory/stock-items` (filtros por produto, depósito, `
 | `INVALID_ADJUSTMENT` | 422 | Ajuste deixaria `on_hand < reserved` ou `on_hand < 0` |
 | `RESERVATION_NOT_ACTIVE` | 409 | Operação sobre reserva em status terminal |
 | `WAREHOUSE_INACTIVE` | 422 | Depósito inativo |
+| `WAREHOUSE_CODE_ALREADY_IN_USE` | 409 | Código de depósito repetido |
+| `WAREHOUSE_HAS_STOCK` | 409 | Inativar depósito com saldo |
+| `STOCK_CHANGED_SINCE_COUNT` | 409 | Saldo mudou entre a contagem e o ajuste |
+| `RECEIPT_ALREADY_REGISTERED` | 409 | Documento já recebido para o fornecedor |
+| `PRODUCT_NOT_AVAILABLE` | 422 | Produto inexistente, de outra organização ou inativo (recebimento) |
+| `SAME_WAREHOUSE_TRANSFER` | 422 | Origem e destino iguais |
 
 ## Cache
 

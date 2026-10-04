@@ -175,6 +175,7 @@ const toggle = useActivationToggle<Supplier>({
       "
       :tone="toggle.target.value?.is_active ? 'danger' : 'primary'"
       :loading="toggle.running.value"
+      :error="toggle.error.value"
       @confirm="toggle.confirm"
     />
   </div>

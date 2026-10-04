@@ -190,6 +190,7 @@ const isSelf = (user: User) => user.id === session.user?.id
       "
       :tone="toggle.target.value?.is_active ? 'danger' : 'primary'"
       :loading="toggle.running.value"
+      :error="toggle.error.value"
       @confirm="toggle.confirm"
     />
   </div>
