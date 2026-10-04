@@ -1,0 +1,164 @@
+# Frontend
+
+Stack: Vue 3 · TypeScript strict · Vite · Vue Router · Pinia · TanStack Query for Vue · Axios ·
+Zod · vue-i18n · Vitest · pnpm. Decisão: ADR-003.
+
+## Estrutura
+
+```text
+frontend/src/
+├── app/
+│   ├── router/           # router, guards de autenticação/permissão
+│   ├── layouts/          # AppLayout (sidebar + topbar), AuthLayout
+│   ├── providers/        # QueryClient, i18n, pinia
+│   ├── i18n/locales/     # pt-BR (chaves em inglês)
+│   └── styles/           # tokens.css, base.css
+├── modules/              # features
+│   ├── auth/  dashboard/  customers/  suppliers/  products/  inventory/
+│   └── orders/  payments/  users/  settings/
+├── components/           # design system: ui/ (Button, Input, Dialog…), data/ (DataTable, StatusBadge, EmptyState)
+├── composables/          # composables genéricos (useConfirm, usePagination, useToast)
+├── services/
+│   └── http/             # cliente Axios, interceptors, normalização de erro
+├── types/                # tipos globais e tipos gerados do OpenAPI
+└── utils/                # formatação de moeda/data, helpers puros
+```
+
+Feature (`src/modules/orders/`): `api/`, `components/`, `composables/`, `pages/`, `schemas/`,
+`types/`, `tests/`, `routes.ts` — criando só o que for usado (template `.claude/templates/vue-feature.md`).
+
+## Estado
+
+| Tipo | Ferramenta | Exemplos |
+| --- | --- | --- |
+| Server state | TanStack Query | pedidos, clientes, produtos, estoque, dashboards |
+| Client state | Pinia | sessão (access token em memória), usuário atual e permissões, preferências, sidebar recolhida, tema |
+| Estado de URL | Vue Router (query params) | filtros, página, ordenação das tabelas |
+| Estado local | `ref`/`reactive` no componente | formulário em edição, diálogo aberto |
+
+Regras: query keys centralizadas por feature; mutations invalidam as keys afetadas; nunca copiar
+resultado de query para o Pinia.
+
+## Integração HTTP
+
+- Um cliente Axios (`src/services/http`) com:
+  - `Authorization: Bearer <access>` a partir do store de sessão;
+  - refresh automático em 401 (uma única tentativa concorrente; refresh token vai no cookie HttpOnly);
+  - `X-Request-ID` gerado por requisição (correlação com logs do backend);
+  - `Idempotency-Key` em mutations marcadas como idempotentes;
+  - normalização do envelope de erro em `ApiError { code, message, details, status }`.
+- Tipos da API gerados do OpenAPI (tarefa Moon `frontend:generate-api-types`, Phase 2).
+- Dinheiro trafega como string decimal; formatação com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
+  Cálculos monetários **não** são feitos no frontend (exceto prévias visuais claramente rotuladas).
+- Datas trafegam em UTC; exibição no fuso do navegador do usuário via `Intl.DateTimeFormat`.
+
+## Formulários
+
+Zod para schema e mensagens (via i18n); validação client-side é feedback antecipado — o backend é a
+autoridade e seus erros (`VALIDATION_ERROR.details.fields`) são mapeados para os campos.
+Cada formulário: labels, help text quando necessário, erro inline, loading no submit, botão
+desabilitado durante envio (anti double-submit), foco no primeiro erro.
+
+## Design system
+
+### Identidade
+
+Profissional, precisa, estável, confiável. Referências de hierarquia e densidade: Linear, Stripe
+Dashboard, GitHub, Shopify Admin, Vercel (sem copiar). Evitar gradientes exagerados, glassmorphism,
+sombras pesadas e animações sem função.
+
+### Tokens
+
+Nenhum hexadecimal em componentes. Paleta base → tokens semânticos em `src/app/styles/tokens.css`:
+
+| Token semântico | Light | Uso |
+| --- | --- | --- |
+| `--color-primary` | `#2563EB` | ações primárias, links, foco |
+| `--color-primary-hover` | `#1D4ED8` | hover de ação primária |
+| `--color-primary-subtle` | `#DBEAFE` | fundos de seleção, badges info leves |
+| `--color-background` | `#F8FAFC` | fundo da aplicação |
+| `--color-surface` | `#FFFFFF` | cards, tabelas, diálogos |
+| `--color-sidebar` | `#0F172A` | sidebar |
+| `--color-text-primary` | `#0F172A` | texto principal |
+| `--color-text-secondary` | `#64748B` | texto auxiliar, labels secundários |
+| `--color-border` | `#E2E8F0` | bordas e divisores |
+| `--color-success` | `#16A34A` | sucesso, entregue |
+| `--color-warning` | `#D97706` | atenção, aguardando |
+| `--color-danger` | `#DC2626` | erro, cancelado, ações destrutivas |
+| `--color-info` | `#0284C7` | informação |
+
+Dark mode: os mesmos tokens redefinidos sob `[data-theme="dark"]` (e `prefers-color-scheme` como
+padrão). Componentes nunca mudam por tema — só os tokens. Também há tokens de espaçamento
+(escala 4px), raio, tipografia e elevação (sombras sutis).
+
+Validar contraste AA de cada par texto/fundo ao definir os valores de dark mode (ex.: `--color-text-secondary` sobre `--color-surface`).
+
+### Tipografia
+
+```css
+font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+```
+
+Escala contida (12/14/16/20/24/30), números tabulares (`font-variant-numeric: tabular-nums`) em
+tabelas e valores monetários.
+
+### Layout
+
+```text
+┌────────────────────────────────────────────┐
+│ Topbar (busca, usuário, tema)              │
+├────────────┬───────────────────────────────┤
+│ Sidebar    │ Page Header (título, ações)   │
+│ Dashboard  │                               │
+│ Orders     │ Content                       │
+│ Inventory  │                               │
+│ Products   │                               │
+│ Customers  │                               │
+│ Suppliers  │                               │
+│ Reports    │                               │
+│ Settings   │                               │
+└────────────┴───────────────────────────────┘
+```
+
+Sidebar recolhível (ícone + texto; só ícone com tooltip quando recolhida), rota ativa destacada
+(cor + indicador lateral + `aria-current="page"`). No mobile vira drawer. Itens visíveis conforme
+permissões do usuário (UX; o backend continua autorizando).
+
+### Componentes-chave
+
+- **DataTable**: paginação, busca, filtros, ordenação, seleção, ações por linha e em lote,
+  skeleton, empty state, error state com "tentar novamente", scroll horizontal no mobile.
+- **StatusBadge**: mapa único status → ícone + rótulo i18n + token de cor. Ex.: `PAID` → ícone de
+  cartão + "Pago" + info; `DELIVERED` → check + "Entregue" + success; `CANCELLED` → x + "Cancelado"
+  + danger. Nunca só cor.
+- **EmptyState**: título, explicação e ação ("Nenhum pedido encontrado. Crie o primeiro pedido ou
+  ajuste os filtros utilizados." + botão).
+- **ConfirmDialog**: para ações destrutivas, com texto específico ("Cancelar pedido OF-2026-000123?")
+  e botão com o verbo da ação.
+- **Toast**: feedback de sucesso/erro de mutations.
+
+Biblioteca de primitivas acessíveis (headless) e utilitário de CSS: decididos na Phase 1 e
+registrados aqui, mantendo os tokens acima como única fonte de cor.
+
+### Dashboard
+
+Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos
+pendentes, produtos com estoque baixo), gráficos (vendas no período, pedidos por status) e tabela de
+pedidos recentes. Nada de gráficos sem pergunta de negócio associada.
+
+## Acessibilidade e responsividade
+
+WCAG 2.2 AA: contraste, navegação por teclado, foco visível, HTML semântico, labels, ARIA apenas
+quando necessário, mensagens de erro associadas, status com ícone + texto. Desktop-first, funcional
+em tablet e mobile (drawer, tabelas com scroll ou layout em cards, ações principais acessíveis).
+
+## Internacionalização
+
+UI inicial em pt-BR via vue-i18n; chaves em inglês por feature (`orders.list.emptyTitle`).
+Nenhuma string visível literal em componentes. Formatação de números, moeda e datas via `Intl`
+com o locale ativo.
+
+## Testes
+
+Vitest + Vue Test Utils: composables (com `QueryClient` de teste), schemas Zod, utilitários de
+formatação e componentes com lógica. E2E (Playwright) avaliado após a Phase 6 para o fluxo de pedido.

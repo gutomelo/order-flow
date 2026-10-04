@@ -1,0 +1,20 @@
+$schema: './cache/schemas/workspace.json'
+
+# Moonrepo v2 — configuração do workspace.
+# Sintaxe validada contra https://moonrepo.dev/docs/config/workspace (moon v2.5.x).
+# Os projetos abaixo passam a existir na Phase 1; até lá, não execute `moon` neste repositório.
+
+# Garante que todos (devs e CI) usem a mesma linha major do moon.
+versionConstraint: '>=2.5.0 <3.0.0'
+
+projects:
+  backend: 'backend'
+  frontend: 'frontend'
+
+vcs:
+  client: 'git'
+  defaultBranch: 'master'
+
+pipeline:
+  # Loga o comando e o diretório de cada tarefa: facilita depuração na CI.
+  logRunningCommand: true
