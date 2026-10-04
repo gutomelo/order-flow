@@ -243,9 +243,6 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 
 ## Questões em aberto
 
-- Multi-tenancy: o OrderFlow atende uma empresa por instalação ou várias empresas na mesma
-  instância? Impacta isolamento de dados de todos os módulos (decidir antes da Phase 2).
 - Limite de crédito do cliente B2B e aprovação comercial antes de `PENDING`.
 - Impostos brasileiros e emissão de nota fiscal (fora do MVP).
 - Devolução parcial e refund parcial.
-- SALES enxerga todos os pedidos ou apenas os da sua equipe (escopo de objeto no RBAC)?

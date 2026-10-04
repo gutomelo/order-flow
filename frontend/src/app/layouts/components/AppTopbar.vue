@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 
 import AppLogo from '@/app/layouts/components/AppLogo.vue'
 import ThemeSwitcher from '@/app/layouts/components/ThemeSwitcher.vue'
+import UserMenu from '@/app/layouts/components/UserMenu.vue'
 
 const emit = defineEmits<{ 'open-menu': [] }>()
 
@@ -29,6 +30,7 @@ const { t } = useI18n()
 
     <div class="ml-auto flex items-center gap-2">
       <ThemeSwitcher />
+      <UserMenu />
     </div>
   </header>
 </template>

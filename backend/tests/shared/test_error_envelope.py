@@ -36,13 +36,11 @@ def test_malformed_json_returns_malformed_request(api_client: APIClient) -> None
     assert response.json()["error"]["code"] == "MALFORMED_REQUEST"
 
 
-def test_protected_view_rejects_anonymous_request(api_client: APIClient) -> None:
+def test_protected_view_requires_authentication(api_client: APIClient) -> None:
     response = api_client.get("/test/protected")
 
-    # Sem classes de autenticação configuradas o DRF responde 403. Com JWT (Phase 2) passa a
-    # ser 401 NOT_AUTHENTICATED — este teste deve ser atualizado nessa fase.
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "PERMISSION_DENIED"
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "NOT_AUTHENTICATED"
 
 
 def test_unexpected_error_hides_internal_details_and_returns_request_id(

@@ -10,7 +10,9 @@ dependencies = [
     "django-cors-headers>=4.9",
     "django-environ>=0.14",
     "django-filter>=26.2",
+    "django-stubs-ext>=5.2,<5.3",
     "djangorestframework>=3.18,<3.19",
+    "djangorestframework-simplejwt>=5.5",
     "drf-spectacular>=0.30",
     "gunicorn>=26.2",
     "psycopg[binary]>=3.3",
@@ -64,6 +66,10 @@ select = [
     "PLE", "PLW",  # pylint: erros e avisos
 ]
 
+# Django e DRF declaram configuração com listas em atributos de classe (Meta.constraints,
+# permission_classes, filterset_fields): é o idioma dos frameworks, não estado mutável.
+ignore = ["RUF012"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "S105", "S106"]
 "**/tests/**/*.py" = ["S101", "S105", "S106"]
@@ -87,6 +93,16 @@ exclude = ["/migrations/"]
 module = ["environ.*", "factory.*", "drf_spectacular.*", "django_filters.*", "corsheaders.*"]
 ignore_missing_imports = true
 
+# factory_boy reexporta a API em `factory/__init__.py` sem `__all__`.
+[[tool.mypy.overrides]]
+module = ["factory", "factory.*"]
+implicit_reexport = true
+
+# Testes chamam APIs de teste sem tipos completos (factory_boy, APIClient).
+[[tool.mypy.overrides]]
+module = ["tests.*", "apps.*.tests.*"]
+disallow_untyped_calls = false
+
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
 
@@ -97,6 +113,10 @@ django_settings_module = "config.settings.test"
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 testpaths = ["tests", "apps"]
 addopts = "-ra --strict-markers --strict-config"
+filterwarnings = [
+    # Chave de assinatura JWT curta é falha de segurança, não aviso.
+    "error::jwt.warnings.InsecureKeyLengthWarning",
+]
 markers = [
     "unit: teste sem banco de dados",
     "integration: teste com PostgreSQL real",
@@ -110,6 +130,8 @@ markers = [
 # ---------------------------------------------------------------------------
 [tool.importlinter]
 root_packages = ["apps", "config", "shared"]
+# Necessário para proibir bibliotecas externas (DRF, Celery) dentro do domínio.
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "shared não depende de módulos de negócio nem do projeto Django"
@@ -122,3 +144,18 @@ name = "módulos de negócio não dependem do pacote de configuração"
 type = "forbidden"
 source_modules = ["apps"]
 forbidden_modules = ["config"]
+
+[[tool.importlinter.contracts]]
+name = "identity: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.identity.api",
+    "apps.identity.application",
+    "apps.identity.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "domínio puro: sem DRF, SimpleJWT ou Celery"
+type = "forbidden"
+source_modules = ["apps.*.domain"]
+forbidden_modules = ["rest_framework", "rest_framework_simplejwt", "celery"]

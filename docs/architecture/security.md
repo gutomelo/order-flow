@@ -56,9 +56,22 @@ clientes da sua equipe") ficam em políticas por módulo aplicadas no `get_query
 Mudanças de role/permissão de usuário geram `AuditLog` `USER_PERMISSION_CHANGED`.
 A matriz é testada (teste parametrizado por role × endpoint).
 
+## Isolamento entre organizações (multi-tenancy)
+
+Regra mais importante de segurança do produto ([ADR-013](../adr/013-multi-tenancy.md)):
+
+- O tenant vem **sempre** de `request.user.organization_id` — nunca de header, URL, corpo ou JWT.
+- Views de negócio usam `shared.tenancy.TenantScopedQuerysetMixin`; use cases recebem
+  `organization_id` no command e filtram por ele.
+- Objeto de outra organização → **404**.
+- Teste de arquitetura garante que todo model de `apps/` tem `organization`; testes de API de cada
+  recurso incluem acesso cruzado entre organizações.
+- Escopo dentro da organização: SALES vê todos os clientes e pedidos da própria organização
+  (decisão de produto); equipes não restringem visibilidade.
+
 ## IDOR
 
-- `get_queryset()` sempre escopado ao que o usuário pode ver; objetos fora do escopo retornam
+- `get_queryset()` sempre escopado à organização e ao que o usuário pode ver; objetos fora do escopo retornam
   **404** (não 403, para não revelar existência).
 - IDs públicos são UUIDs (não enumeráveis); números legíveis (`Order.number`) não são usados como
   chave de acesso na API.
@@ -90,6 +103,16 @@ criação de pedidos e pagamentos. Excesso → `429 RATE_LIMITED`.
 - Produção: `DEBUG=False`, `ALLOWED_HOSTS` explícito, `SECURE_SSL_REDIRECT`, HSTS,
   `SECURE_CONTENT_TYPE_NOSNIFF`, `X_FRAME_OPTIONS="DENY"`, `Referrer-Policy`, cookies `Secure`;
   CSP no servidor que entrega o frontend. `manage.py check --deploy` sem alertas.
+
+## Implementação (Phase 2)
+
+| Peça | Onde |
+| --- | --- |
+| Catálogo de permissões e política papel → permissões | `apps/identity/domain/permissions.py` (teste compara com a matriz acima) |
+| Porta de autorização das views | `shared.permissions.HasPermission("resource:action")` |
+| Escopo por organização | `shared.tenancy` (`TenantScopedModel`, `TenantScopedQuerysetMixin`) |
+| Autenticação por requisição | `OrganizationAwareJWTAuthentication` (usuário e organização ativos) |
+| Teste de arquitetura de tenancy | `backend/tests/architecture/test_tenant_scoping.py` |
 
 ## Secrets
 

@@ -50,7 +50,7 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 
 | Módulo | Dados (tabelas) | Expõe (application) |
 | --- | --- | --- |
-| `identity` | `User`, `Team`, `Role`, atribuições, blacklist de tokens | usuário atual, permissões efetivas |
+| `identity` | `Organization` (tenant), `User`, `Team`, blacklist de tokens | usuário atual, permissões efetivas, catálogo de permissões |
 | `customers` | `Customer`, contatos, segmento | `get_active_customer` |
 | `suppliers` | `Supplier` | leituras |
 | `catalog` | `Product`, `Category` | `get_sellable_products` |
@@ -70,6 +70,7 @@ joins/FKs) é tolerada; leitura com regra passa pela `application` do dono.
 
 | Tema | Convenção |
 | --- | --- |
+| Tenant | toda tabela de negócio tem `organization_id` (`shared.tenancy.TenantScopedModel`); unicidades de negócio são por organização (ADR-013) |
 | IDs | UUID v4 como PK em entidades expostas na API; números legíveis (`Order.number`) separados |
 | Dinheiro | `Decimal`; `NUMERIC(14,2)`; value object `Money` (valor + moeda `BRL`); arredondamento `ROUND_HALF_UP` em um único lugar |
 | Moeda | campo `currency` (ISO 4217) nas entidades monetárias, fixo em `BRL` no MVP — expansão futura sem migração estrutural |

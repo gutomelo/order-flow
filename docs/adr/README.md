@@ -20,6 +20,7 @@ Template: `.claude/templates/adr.md` · Criação: skill `/create-adr`.
 | [010](010-docker-compose-local-environment.md) | Docker Compose para o ambiente local | Accepted |
 | [011](011-transactional-outbox.md) | Transactional Outbox para eventos críticos | Proposed |
 | [012](012-idempotency-keys.md) | Idempotency-Key persistida no PostgreSQL | Accepted |
+| [013](013-multi-tenancy.md) | Multi-tenancy com banco compartilhado e escopo explícito por organização | Accepted |
 
 ## Status possíveis
 

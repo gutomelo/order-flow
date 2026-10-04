@@ -11,7 +11,7 @@ from .environment import env  # noqa: F401  (efeito colateral: leitura do .env)
 
 # Valores padrão para que `pytest`, `mypy` e `manage.py check` funcionem sem `.env`
 # (ex.: na CI, onde DATABASE_URL vem do workflow).
-os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-insecure-secret-key")
+os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-insecure-secret-key-with-at-least-32-bytes")
 os.environ.setdefault("DATABASE_URL", "postgres://orderflow:orderflow@localhost:5432/orderflow")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("CELERY_BROKER_URL", "memory://")
@@ -27,3 +27,5 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 CELERY_BROKER_URL = "memory://"
+
+AUTH_REFRESH_COOKIE = {**AUTH_REFRESH_COOKIE, "secure": False}

@@ -4,9 +4,10 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from shared.infrastructure import health
 
-# Rotas versionadas da API. Cada módulo inclui suas rotas aqui a partir da Phase 2:
-#   path("orders/", include("apps.orders.api.urls")),
-api_v1_patterns: list[URLPattern | URLResolver] = []
+# Rotas versionadas da API: cada módulo inclui as suas aqui.
+api_v1_patterns: list[URLPattern | URLResolver] = [
+    path("", include("apps.identity.api.urls")),
+]
 
 urlpatterns = [
     path("api/v1/", include((api_v1_patterns, "api"), namespace="v1")),

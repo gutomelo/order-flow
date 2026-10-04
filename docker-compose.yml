@@ -6,7 +6,7 @@
 
 x-backend-env: &backend-env
   DJANGO_SETTINGS_MODULE: config.settings.local
-  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-insecure-secret-key}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-insecure-secret-key-change-me-0123456789}
   DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
   DATABASE_URL: postgres://${POSTGRES_USER:-orderflow}:${POSTGRES_PASSWORD:-orderflow}@postgres:5432/${POSTGRES_DB:-orderflow}
   REDIS_URL: redis://redis:6379/0

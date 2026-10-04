@@ -1,7 +1,13 @@
 """Settings de produção: seguros por padrão, sem valores default para segredos."""
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *
 from .environment import env
+
+# HMAC-SHA256 exige chave de pelo menos 32 bytes (RFC 7518 §3.2); falha cedo, no boot.
+if len(SIMPLE_JWT["SIGNING_KEY"].encode()) < 32:
+    raise ImproperlyConfigured("JWT_SIGNING_KEY/DJANGO_SECRET_KEY precisa ter pelo menos 32 bytes.")
 
 DEBUG = False
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")

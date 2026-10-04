@@ -23,7 +23,11 @@ paths:
 - Toda coleção é paginada (paginação padrão do projeto), com filtros, busca e ordenação
   explicitamente permitidos (`ordering_fields` whitelist).
 - `POST /orders`, `/payments`, `/refunds` exigem header `Idempotency-Key` (ADR-012).
-- Todo endpoint tem `permission_classes` explícitas com permissões `resource:action` e
-  queryset escopado ao usuário.
+- Todo endpoint tem `permission_classes` explícitas:
+  `(IsAuthenticated, HasPermission(Permission.X))` — `shared.permissions` + `apps.identity.domain.permissions`.
+- Toda view de negócio herda `shared.tenancy.api.TenantScopedQuerysetMixin` (queryset filtrado pela
+  organização do usuário; objeto de outra organização → 404). Use cases recebem `organization_id`
+  no command — nunca do corpo da requisição.
+- Testes de API de cada recurso incluem acesso cruzado entre organizações.
 - drf-spectacular: anotar com `@extend_schema` quando a inferência não bastar (ações, erros,
   headers). O schema em `/api/schema/` é contrato com o frontend.

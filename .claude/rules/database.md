@@ -7,6 +7,9 @@ paths:
 
 # Banco de dados (PostgreSQL)
 
+- **Multi-tenant (ADR-013):** todo model de negócio herda `shared.tenancy.models.TenantScopedModel`
+  (FK `organization`). Unicidades de negócio incluem a organização (`UNIQUE (organization_id, sku)`).
+  O teste `tests/architecture/test_tenant_scoping.py` falha se faltar.
 - Toda invariante importante também no banco: `ForeignKey` com `on_delete` pensado
   (`PROTECT` para dados financeiros/históricos), `UniqueConstraint`, `CheckConstraint`.
 - Nomes de constraints explícitos: `<table>_<rule>_check`, `<table>_<cols>_uniq`.

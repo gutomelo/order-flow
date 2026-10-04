@@ -1,4 +1,4 @@
-import { LayoutDashboard } from '@lucide/vue'
+import { LayoutDashboard, Users, UsersRound } from '@lucide/vue'
 import type { Component } from 'vue'
 
 export interface NavigationItem {
@@ -7,10 +7,12 @@ export interface NavigationItem {
   /** Chave i18n do rótulo. */
   labelKey: string
   icon: Component
+  /** Itens sem a permissão do usuário ficam ocultos (UX; o backend é a autoridade). */
+  permission?: string
 }
 
-// Itens entram aqui junto com as features (orders, inventory, products...). Na Phase 2, cada
-// item passa a declarar a permissão necessária para ser exibido.
 export const primaryNavigation: NavigationItem[] = [
   { routeName: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { routeName: 'users', labelKey: 'nav.users', icon: Users, permission: 'users:manage' },
+  { routeName: 'teams', labelKey: 'nav.teams', icon: UsersRound, permission: 'users:manage' },
 ]

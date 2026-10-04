@@ -7,7 +7,8 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 
 | Português | Código | Definição |
 | --- | --- | --- |
-| Usuário | `User` | Pessoa que acessa o sistema |
+| Organização | `Organization` | Empresa cliente do SaaS (tenant); todo dado de negócio pertence a uma |
+| Usuário | `User` | Pessoa que acessa o sistema; pertence a uma organização |
 | Equipe | `Team` | Agrupamento de usuários (ex.: equipe comercial Sul) |
 | Papel | `Role` | Conjunto nomeado de permissões (`ADMIN`, `MANAGER`, `SALES`, `WAREHOUSE`, `FINANCE`, `VIEWER`) |
 | Permissão | `Permission` | Capacidade `resource:action` (ex.: `orders:cancel`) |

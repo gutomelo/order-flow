@@ -154,6 +154,19 @@ permissões do usuário (UX; o backend continua autorizando).
 
 Validação: Lighthouse (desktop) Accessibility 100 e Best Practices 100 no dashboard.
 
+### Decisões de implementação (Phase 2)
+
+| Tema | Decisão | Por quê |
+| --- | --- | --- |
+| Sessão | access token só em memória (store `session`); refresh por cookie HttpOnly; `restore()` no primeiro guard de rota | XSS não consegue ler credenciais; recarregar a página não desloga |
+| Refresh concorrente | uma única promessa de refresh compartilhada (*single-flight*) | refreshes paralelos usariam um cookie já rotacionado e derrubariam a sessão |
+| Cliente HTTP × sessão | o store registra hooks no cliente (`configureAuth`) | sem import circular; cliente testável com adapter em memória |
+| Rotas | `meta.public` e `meta.permission`; sem sessão → `/login?redirect=`; sem permissão → `/forbidden` | UX coerente com o RBAC (o backend continua sendo a autoridade) |
+| Redirect pós-login | só caminhos internos (`/…`, nunca `//…`) | evita *open redirect* |
+| Formulários | `useZodForm`: schema Zod com mensagens como chaves i18n; erros `VALIDATION_ERROR` do backend mapeados para os campos; envio bloqueado enquanto em andamento | uma regra de formulário para todas as features, sem dependência extra |
+| Diálogos e menus | `<dialog>` nativo (`BaseDialog`, `ConfirmDialog`), `<select>` nativo e padrão *disclosure* no menu do usuário | acessíveis sem biblioteca; primitivas headless (Reka UI) só quando surgir combobox com busca (Phase 6) |
+| Feedback | `ToastRegion` com `aria-live` | anuncia sucesso/erro sem mover o foco |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

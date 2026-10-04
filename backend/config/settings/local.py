@@ -15,3 +15,9 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
     "rest_framework.renderers.JSONRenderer",
     "rest_framework.renderers.BrowsableAPIRenderer",
 ]
+
+# Desenvolvimento roda em HTTP: o cookie de refresh não pode exigir HTTPS.
+AUTH_REFRESH_COOKIE = {
+    **AUTH_REFRESH_COOKIE,
+    "secure": env.bool("AUTH_REFRESH_COOKIE_SECURE", default=False),
+}

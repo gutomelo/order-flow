@@ -4,9 +4,16 @@ Todo valor sensível ou dependente de ambiente vem de variáveis de ambiente
 (documentadas em `.env.example` na raiz do repositório).
 """
 
+from datetime import timedelta
+
+import django_stubs_ext
+
 from shared.logging import build_logging_config, configure_structlog
 
 from .environment import BASE_DIR, env
+
+# Permite generics em classes do Django em runtime (ex.: admin.ModelAdmin[Model]), usados pelo mypy.
+django_stubs_ext.monkeypatch()
 
 # ---------------------------------------------------------------------------
 # Núcleo
@@ -27,6 +34,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     # Módulos de negócio
     "apps.identity",
 ]
@@ -63,8 +71,12 @@ TEMPLATES = [
 ]
 
 # Modelo de usuário customizado desde o primeiro migrate: trocá-lo depois exige reescrever
-# migrations de auth/admin. A implementação completa de identity vem na Phase 2.
+# migrations de auth/admin.
 AUTH_USER_MODEL = "identity.User"
+
+# Tenant (ADR-013). Mesmo padrão de AUTH_USER_MODEL: `shared.tenancy` referencia o model pelo
+# label, sem importar `apps/`.
+TENANT_MODEL = "identity.Organization"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -110,8 +122,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Django REST Framework
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
-    # JWT entra na Phase 2 (ADR-007). Até lá nenhuma autenticação é aceita pela API.
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    # JWT (ADR-007) + verificação de organização ativa a cada requisição (ADR-013).
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.identity.api.authentication.OrganizationAwareJWTAuthentication",
+    ],
     # Seguro por padrão: endpoints precisam declarar explicitamente se são públicos.
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -132,6 +146,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("API_THROTTLE_ANON", default="60/min"),
         "user": env("API_THROTTLE_USER", default="600/min"),
+        # Login e refresh: limita tentativas de força bruta (por IP).
+        "auth": env("API_THROTTLE_AUTH", default="10/min"),
     },
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
@@ -143,6 +159,32 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+",
+}
+
+# ---------------------------------------------------------------------------
+# Autenticação JWT (ADR-007, docs/domain/identity.md)
+# ---------------------------------------------------------------------------
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_TOKEN_MINUTES", default=10)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESH_TOKEN_DAYS", default=7)),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "SIGNING_KEY": env("JWT_SIGNING_KEY", default=SECRET_KEY),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    # Usuário inativo OU organização inativa não autentica nem renova sessão (ID7).
+    "USER_AUTHENTICATION_RULE": "apps.identity.authentication.user_can_authenticate",
+    # Troca de senha invalida access tokens emitidos antes dela.
+    "CHECK_REVOKE_TOKEN": True,
+}
+
+# Refresh token em cookie HttpOnly, inacessível a JavaScript (ADR-007).
+AUTH_REFRESH_COOKIE = {
+    "name": "orderflow_refresh",
+    "path": "/api/v1/auth/",
+    "samesite": "Strict",
+    "secure": env.bool("AUTH_REFRESH_COOKIE_SECURE", default=True),
 }
 
 # ---------------------------------------------------------------------------

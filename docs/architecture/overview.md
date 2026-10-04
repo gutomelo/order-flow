@@ -98,6 +98,6 @@ Cada fase termina com `moon run :check` verde, documentação atualizada e Defin
 
 ## Fora do escopo inicial
 
-Microsserviços, multi-tenancy (questão em aberto), impostos/nota fiscal, multi-moeda efetiva,
+Microsserviços, isolamento físico por tenant (ADR-013), impostos/nota fiscal, multi-moeda efetiva,
 devolução parcial, alocação multi-depósito, plataforma de feature flags (a configuração por
 ambiente em `config/settings` é o ponto de extensão previsto).

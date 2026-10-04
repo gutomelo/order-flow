@@ -26,6 +26,7 @@ Siga `.claude/templates/django-module.md`. Regras:
 
 - `INSTALLED_APPS` em `backend/config/settings/base.py`.
 - Rotas em `backend/config/urls.py` sob `api/v1/` (somente quando houver endpoint).
+- Models de negócio herdam `TenantScopedModel` (ADR-013); views usam `TenantScopedQuerysetMixin`.
 - Contratos do import-linter em `backend/pyproject.toml`: o módulo não importa `infrastructure`/`api`
   de outros módulos; camadas `api → application → domain` quando `rich`.
 

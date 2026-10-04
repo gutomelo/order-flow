@@ -34,6 +34,19 @@ docker compose exec backend python manage.py createsuperuser
 
 Atalhos: `make dev`, `make stop`, `make logs`, `make migrate`, `make shell`.
 
+### Primeiro acesso
+
+Não há cadastro público de empresas: o operador da plataforma cria a organização e o primeiro ADMIN.
+
+```bash
+docker compose exec backend python manage.py create_organization \
+  --name "Acme Distribuidora" --admin-email ana@acme.com
+# a senha é solicitada no terminal (validadores de senha do Django)
+```
+
+Depois, entre em http://localhost:5173 com esse e-mail. O ADMIN cria os demais usuários em
+**Usuários**. `createsuperuser` cria um operador da plataforma, que acessa apenas `/admin/`.
+
 ## Dois modos de trabalho
 
 **A) Tudo em containers** — `docker compose up`. Mais simples; hot reload via volumes.

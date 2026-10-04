@@ -38,8 +38,8 @@ backend/
 ```
 
 Diretórios de `shared/` são criados quando o primeiro uso real aparece: a Phase 1 criou
-`exceptions`, `pagination`, `logging` e `infrastructure` (health); `domain`, `events`,
-`permissions` e `idempotency` chegam com as fases que os usam.
+`exceptions`, `pagination`, `logging` e `infrastructure` (health); a Phase 2 criou `tenancy`
+(ADR-013) e `permissions`; `domain`, `events` e `idempotency` chegam com as fases que os usam.
 
 **Exceção deliberada na Phase 1:** `apps/identity` já contém o model `User` (UUID como PK, e-mail
 único) e `AUTH_USER_MODEL = "identity.User"`. Trocar o modelo de usuário depois do primeiro

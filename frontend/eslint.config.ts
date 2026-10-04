@@ -22,6 +22,8 @@ export default defineConfigWithVueTs(
       'vue/multi-word-component-names': ['error', { ignores: ['App'] }],
       'vue/block-lang': ['error', { script: { lang: 'ts' } }],
       'vue/component-api-style': ['error', ['script-setup']],
+      // Props opcionais tipadas (`error?: string`) têm `undefined` como default intencional.
+      'vue/require-default-prop': 'off',
     },
   },
 
