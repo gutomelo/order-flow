@@ -6,7 +6,7 @@ apenas a porta usada pelas views — qualquer usuário que implemente `Permissio
 
 from typing import Any, Protocol, runtime_checkable
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
@@ -33,3 +33,18 @@ def HasPermission(*permissions: str) -> type[BasePermission]:
 
     _HasPermission.__name__ = f"HasPermission[{','.join(permissions)}]"
     return _HasPermission
+
+
+def HasReadWritePermission(*, read: str, write: str) -> type[BasePermission]:
+    """`read` para métodos seguros (GET/HEAD/OPTIONS); `write` para os demais.
+
+    Uso: `HasReadWritePermission(read="catalog:read", write="catalog:manage")`.
+    """
+
+    class _HasReadWritePermission(BasePermission):
+        def has_permission(self, request: Request, view: APIView) -> bool:
+            required = read if request.method in SAFE_METHODS else write
+            return HasPermission(required)().has_permission(request, view)
+
+    _HasReadWritePermission.__name__ = f"HasReadWritePermission[{read}|{write}]"
+    return _HasReadWritePermission

@@ -10,8 +10,10 @@ import AppLayout from '@/app/layouts/AppLayout.vue'
 import AuthLayout from '@/app/layouts/AuthLayout.vue'
 import { i18n } from '@/app/providers/i18n'
 import { authRoutes } from '@/modules/auth/routes'
+import { catalogRoutes } from '@/modules/catalog/routes'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
+import { suppliersRoutes } from '@/modules/suppliers/routes'
 import { usersRoutes } from '@/modules/users/routes'
 
 declare module 'vue-router' {
@@ -37,6 +39,8 @@ export const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: { name: 'dashboard' } },
       ...dashboardRoutes,
+      ...catalogRoutes,
+      ...suppliersRoutes,
       ...usersRoutes,
       {
         path: 'forbidden',

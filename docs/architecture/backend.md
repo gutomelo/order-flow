@@ -39,7 +39,21 @@ backend/
 
 Diretórios de `shared/` são criados quando o primeiro uso real aparece: a Phase 1 criou
 `exceptions`, `pagination`, `logging` e `infrastructure` (health); a Phase 2 criou `tenancy`
-(ADR-013) e `permissions`; `domain`, `events` e `idempotency` chegam com as fases que os usam.
+(ADR-013) e `permissions`; a Phase 3 criou `domain` (CNPJ, GTIN), `api` (ações
+activate/deactivate) e `infrastructure/db.py` (nome da constraint violada); `events` e `idempotency`
+chegam com as fases que os usam.
+
+**Módulos da Phase 3:** `suppliers` e `catalog` usam o nível 1 do template (`models`, `services`,
+`selectors`, `exceptions`, `api/`): as regras cabem em serviços coesos e não justificam camadas
+`application/`/`domain/` próprias. Leituras com regra que outros módulos usam ficam em
+`selectors.py` (ex.: `get_active_supplier`), nunca em consultas diretas ao model alheio.
+
+**Permissões de leitura/escrita:** `HasReadWritePermission(read=..., write=...)` aplica `read` em
+métodos seguros e `write` nos demais.
+
+**Erros de unicidade:** `shared.infrastructure.db.violated_constraint(exc)` lê o nome da constraint
+informado pelo PostgreSQL para traduzir cada `UNIQUE` no erro de domínio certo (sem depender do texto
+da mensagem).
 
 **Exceção deliberada na Phase 1:** `apps/identity` já contém o model `User` (UUID como PK, e-mail
 único) e `AUTH_USER_MODEL = "identity.User"`. Trocar o modelo de usuário depois do primeiro

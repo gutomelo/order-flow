@@ -20,7 +20,12 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | --- | --- | --- |
 | Cliente | `Customer` | Empresa compradora (B2B), identificada por CNPJ (`tax_id`) |
 | Fornecedor | `Supplier` | Empresa que fornece produtos |
-| Produto | `Product` | Item vendável identificado por `sku` |
+| Produto | `Product` | Item vendável identificado por `sku`; não tem preço (ver `pricing`) |
+| SKU | `Product.sku` | Código interno do produto, único por organização, imutável |
+| Código de barras | `Product.barcode` | GTIN (EAN-8/13, UPC-A, GTIN-14) opcional |
+| Unidade de medida | `UnitOfMeasure` | `UNIT`, `BOX`, `PACK`, `PAIR` |
+| CNPJ | `tax_id` | Documento da empresa; numérico ou alfanumérico (a partir de 07/2026) |
+| Razão social / nome fantasia | `legal_name` / `trade_name` | Nome jurídico / nome comercial |
 | Categoria | `Category` | Classificação hierárquica de produtos |
 | Tabela de preço | `PriceList` | Preços aplicáveis a um segmento/contrato |
 | Política de preço | `PricingStrategy` | Regra que calcula o preço unitário (padrão, atacado, contrato) |

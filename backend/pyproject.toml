@@ -159,3 +159,14 @@ name = "domínio puro: sem DRF, SimpleJWT ou Celery"
 type = "forbidden"
 source_modules = ["apps.*.domain"]
 forbidden_modules = ["rest_framework", "rest_framework_simplejwt", "celery"]
+
+[[tool.importlinter.contracts]]
+name = "fronteiras do catálogo: catalog → suppliers, nunca o inverso"
+type = "forbidden"
+source_modules = ["apps.suppliers"]
+forbidden_modules = ["apps.catalog"]
+
+[[tool.importlinter.contracts]]
+name = "módulos não importam api/ de outros módulos"
+type = "independence"
+modules = ["apps.identity.api", "apps.suppliers.api", "apps.catalog.api"]

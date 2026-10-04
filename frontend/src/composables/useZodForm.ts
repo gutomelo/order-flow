@@ -43,7 +43,15 @@ export function useZodForm<Schema extends z.ZodObject>(
   }
 
   function applyServerError(error: unknown): boolean {
-    if (!(error instanceof ApiError) || error.code !== 'VALIDATION_ERROR') return false
+    if (!(error instanceof ApiError)) return false
+    // Erro de domínio ligado a um campo (ex.: INVALID_BARCODE com details.field = "barcode"):
+    // a mensagem aparece no próprio campo, não no topo do formulário.
+    const field = error.details.field
+    if (typeof field === 'string' && field in values) {
+      errors.value = { [field]: error.message } as FieldErrors<Values>
+      return true
+    }
+    if (error.code !== 'VALIDATION_ERROR') return false
     const fields = (error.details.fields ?? {}) as Record<string, string[] | string>
     const next: Record<string, string> = {}
     for (const [field, messages] of Object.entries(fields)) {

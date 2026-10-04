@@ -167,6 +167,23 @@ Validação: Lighthouse (desktop) Accessibility 100 e Best Practices 100 no dash
 | Diálogos e menus | `<dialog>` nativo (`BaseDialog`, `ConfirmDialog`), `<select>` nativo e padrão *disclosure* no menu do usuário | acessíveis sem biblioteca; primitivas headless (Reka UI) só quando surgir combobox com busca (Phase 6) |
 | Feedback | `ToastRegion` com `aria-live` | anuncia sucesso/erro sem mover o foco |
 
+### Decisões de implementação (Phase 3)
+
+Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e foi extraído:
+
+| Peça | O que resolve |
+| --- | --- |
+| `DataTable` (genérico, slots `cell-<key>`) | estados obrigatórios (skeleton, erro com retry, vazio × sem resultado de filtro), paginação, `caption`, scroll horizontal |
+| `useUrlFilters` | filtros e página na query string, com parsers por campo; `page` volta a 1 quando um filtro muda |
+| `SearchInput` | busca com debounce, sincronizada com a URL |
+| `useActivationToggle` | ativar/inativar com confirmação, feedback e tratamento de erro |
+| `useZodForm` | passou a mostrar no **próprio campo** erros de domínio com `details.field` (ex.: `INVALID_BARCODE`), não só erros de validação |
+
+- Ações de gestão e colunas dependentes de outras permissões são ocultadas, e as consultas
+  correspondentes **nem são feitas** (ex.: SALES lê o catálogo, mas não consulta fornecedores).
+- Texto com estado anexado (`Sul Express (inativo)`) é renderizado como um único nó de texto:
+  nós separados perdem o espaço para leitores de tela.
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

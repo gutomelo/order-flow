@@ -52,8 +52,8 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | --- | --- | --- |
 | `identity` | `Organization` (tenant), `User`, `Team`, blacklist de tokens | usuário atual, permissões efetivas, catálogo de permissões |
 | `customers` | `Customer`, contatos, segmento | `get_active_customer` |
-| `suppliers` | `Supplier` | leituras |
-| `catalog` | `Product`, `Category` | `get_sellable_products` |
+| `suppliers` | `Supplier` | `selectors.get_active_supplier` |
+| `catalog` | `Product`, `Category` | `selectors.get_sellable_products`, `selectors.descendant_ids` |
 | `pricing` | `PriceList`, regras de desconto | `price_lines(customer, lines)` |
 | `inventory` | `Warehouse`, `StockItem`, `StockReservation`, `StockMovement` | `ReserveStock`, `ReleaseReservation`, `ConfirmReservation`, `ConsumeReservation` |
 | `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderReturn` | use cases do pedido |

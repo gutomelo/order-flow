@@ -73,6 +73,16 @@ Marcadores pytest: `unit`, `integration`, `concurrency`, `slow`. A CI roda todos
 | T21 | Totais do pedido e arredondamento de `Decimal` | unit | orders/pricing |
 | T22 | Envelope de erro padrão em 400/401/403/404/409/422/500 (sem stack trace) | integração | shared |
 
+## Validar que o teste testa (mutação manual)
+
+Teste que passa de primeira merece desconfiança. Para regras críticas, remova a regra
+temporariamente e confirme que o teste **falha** (e falha rápido):
+
+- Phase 2: sem o lock da organização, o teste de "último ADMIN" continuava passando — a corrida não
+  era reproduzida. Foi reescrito com uma barreira entre "contar" e "gravar".
+- Phase 3: sem a regra de ciclo de categorias, a suíte **travava** em vez de falhar, revelando
+  laços sem proteção na leitura da árvore. As leituras passaram a tolerar ciclos.
+
 ## Teste de concorrência — esqueleto
 
 ```python
