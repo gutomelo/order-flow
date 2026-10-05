@@ -1,10 +1,12 @@
 import {
+  BadgeDollarSign,
   Boxes,
   Building2,
   FolderTree,
   History,
   LayoutDashboard,
   Package,
+  ShoppingCart,
   Tags,
   Truck,
   Users,
@@ -25,6 +27,7 @@ export interface NavigationItem {
 
 export const primaryNavigation: NavigationItem[] = [
   { routeName: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { routeName: 'orders', labelKey: 'nav.orders', icon: ShoppingCart, permission: 'orders:read' },
   {
     routeName: 'customers',
     labelKey: 'nav.customers',
@@ -43,6 +46,12 @@ export const primaryNavigation: NavigationItem[] = [
     labelKey: 'nav.categories',
     icon: FolderTree,
     permission: 'catalog:read',
+  },
+  {
+    routeName: 'price-lists',
+    labelKey: 'nav.priceLists',
+    icon: BadgeDollarSign,
+    permission: 'pricing:read',
   },
   { routeName: 'suppliers', labelKey: 'nav.suppliers', icon: Truck, permission: 'suppliers:read' },
   { routeName: 'stock', labelKey: 'nav.stock', icon: Boxes, permission: 'inventory:read' },

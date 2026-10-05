@@ -38,6 +38,8 @@ clientes da sua equipe") ficam em políticas por módulo aplicadas no `get_query
 | `suppliers:manage` | ✓ | ✓ | | | | |
 | `catalog:read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `catalog:manage` | ✓ | ✓ | | | | |
+| `pricing:read` | ✓ | ✓ | ✓ | | ✓ | ✓ |
+| `pricing:manage` | ✓ | ✓ | | | | |
 | `inventory:read` | ✓ | ✓ | ✓ | ✓ | | ✓ |
 | `inventory:update` (recebimento, transferência) | ✓ | ✓ | | ✓ | | |
 | `inventory:adjust` | ✓ | ✓ | | ✓ | | |

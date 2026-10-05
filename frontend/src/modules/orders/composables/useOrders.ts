@@ -1,0 +1,76 @@
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+
+import * as api from '@/modules/orders/api/ordersApi'
+import type { DraftInput, LineInput, OrderFilters } from '@/modules/orders/types'
+
+export const ordersKeys = {
+  all: ['orders'] as const,
+  list: (filters: OrderFilters) => [...ordersKeys.all, 'list', filters] as const,
+  detail: (id: string) => [...ordersKeys.all, 'detail', id] as const,
+  quote: (input: { customer_id: string; lines: LineInput[] }) =>
+    [...ordersKeys.all, 'quote', input] as const,
+}
+
+export function useOrdersList(filters: MaybeRefOrGetter<OrderFilters>) {
+  return useQuery({
+    queryKey: computed(() => ordersKeys.list(toValue(filters))),
+    queryFn: () => api.listOrders(toValue(filters)),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useOrder(id: MaybeRefOrGetter<string | undefined>) {
+  return useQuery({
+    queryKey: computed(() => ordersKeys.detail(toValue(id) ?? '')),
+    queryFn: () => api.getOrder(toValue(id) ?? ''),
+    enabled: computed(() => Boolean(toValue(id))),
+  })
+}
+
+/** Prévia calculada pelo backend: o frontend não soma dinheiro. */
+export function useQuote(
+  input: MaybeRefOrGetter<{ customer_id: string; lines: LineInput[] } | null>,
+) {
+  return useQuery({
+    queryKey: computed(() => ordersKeys.quote(toValue(input) ?? { customer_id: '', lines: [] })),
+    queryFn: () => {
+      const value = toValue(input)
+      if (!value) throw new Error('quote without input')
+      return api.quoteOrder(value)
+    },
+    enabled: computed(() => Boolean(toValue(input)?.lines.length)),
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+  })
+}
+
+/** Invalida `orders` ao terminar — inclusive no erro (409 = tela desatualizada). */
+function useOrdersMutation<Input, Output>(mutationFn: (input: Input) => Promise<Output>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Input) => mutationFn(input),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+  })
+}
+
+export const useSaveDraft = () =>
+  useOrdersMutation((input: { id?: string; data: DraftInput }) =>
+    input.id ? api.updateDraft(input.id, input.data) : api.createDraft(input.data),
+  )
+
+export const useSubmitOrder = () =>
+  useOrdersMutation((input: { id: string; expectedTotal: string | null }) =>
+    api.submitOrder(input.id, input.expectedTotal),
+  )
+
+export const usePlaceOrder = () =>
+  useOrdersMutation(
+    (input: { data: DraftInput & { expected_total: string | null }; key: string }) =>
+      api.placeOrder(input.data, input.key),
+  )
+
+export const useCancelOrder = () =>
+  useOrdersMutation((input: { id: string; reason: string }) =>
+    api.cancelOrder(input.id, input.reason),
+  )

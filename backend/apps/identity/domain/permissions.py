@@ -26,6 +26,8 @@ class Permission(StrEnum):
     SUPPLIERS_MANAGE = "suppliers:manage"
     CATALOG_READ = "catalog:read"
     CATALOG_MANAGE = "catalog:manage"
+    PRICING_READ = "pricing:read"
+    PRICING_MANAGE = "pricing:manage"
     INVENTORY_READ = "inventory:read"
     INVENTORY_UPDATE = "inventory:update"
     INVENTORY_ADJUST = "inventory:adjust"
@@ -52,6 +54,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.CUSTOMERS_READ, P.CUSTOMERS_CREATE, P.CUSTOMERS_UPDATE, P.CUSTOMERS_MANAGE_SEGMENTS,
             P.SUPPLIERS_READ, P.SUPPLIERS_MANAGE,
             P.CATALOG_READ, P.CATALOG_MANAGE,
+            P.PRICING_READ, P.PRICING_MANAGE,
             P.INVENTORY_READ, P.INVENTORY_UPDATE, P.INVENTORY_ADJUST,
             P.ORDERS_READ, P.ORDERS_CREATE, P.ORDERS_CANCEL, P.ORDERS_CANCEL_PAID,
             P.ORDERS_PROCESS, P.ORDERS_SHIP,
@@ -64,6 +67,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         {
             P.CUSTOMERS_READ, P.CUSTOMERS_CREATE, P.CUSTOMERS_UPDATE,
             P.CATALOG_READ,
+            P.PRICING_READ,
             P.INVENTORY_READ,
             P.ORDERS_READ, P.ORDERS_CREATE, P.ORDERS_CANCEL,
             P.PAYMENTS_CREATE,
@@ -82,6 +86,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.CUSTOMERS_READ,
             P.SUPPLIERS_READ,
             P.CATALOG_READ,
+            P.PRICING_READ,
             P.ORDERS_READ, P.ORDERS_CANCEL_PAID,
             P.PAYMENTS_READ, P.PAYMENTS_CREATE, P.PAYMENTS_REFUND,
             P.REPORTS_FINANCIAL,
@@ -92,6 +97,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             P.CUSTOMERS_READ,
             P.SUPPLIERS_READ,
             P.CATALOG_READ,
+            P.PRICING_READ,
             P.INVENTORY_READ,
             P.ORDERS_READ,
         }

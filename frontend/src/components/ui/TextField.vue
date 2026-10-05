@@ -21,7 +21,7 @@ const {
   required?: boolean
   autocomplete?: string
   placeholder?: string
-  inputmode?: 'numeric' | 'text'
+  inputmode?: 'numeric' | 'decimal' | 'text'
   hideLabel?: boolean
 }>()
 

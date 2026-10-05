@@ -175,6 +175,8 @@ modules = [
     "apps.suppliers.api",
     "apps.catalog.api",
     "apps.inventory.api",
+    "apps.pricing.api",
+    "apps.orders.api",
 ]
 
 [[tool.importlinter.contracts]]
@@ -203,3 +205,31 @@ name = "catálogo, fornecedores e estoque não conhecem clientes"
 type = "forbidden"
 source_modules = ["apps.catalog", "apps.suppliers", "apps.inventory"]
 forbidden_modules = ["apps.customers"]
+
+[[tool.importlinter.contracts]]
+name = "orders: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.orders.api",
+    "apps.orders.application",
+    "apps.orders.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "orders é o coordenador: ninguém depende dele"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+]
+forbidden_modules = ["apps.orders"]
+
+[[tool.importlinter.contracts]]
+name = "pricing não é conhecido por catálogo, clientes e estoque"
+type = "forbidden"
+source_modules = ["apps.catalog", "apps.customers", "apps.inventory", "apps.suppliers"]
+forbidden_modules = ["apps.pricing"]

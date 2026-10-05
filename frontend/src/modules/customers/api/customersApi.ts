@@ -31,6 +31,14 @@ export async function listCustomers(filters: CustomerFilters) {
   return data
 }
 
+/** Clientes ativos para seletores com busca (pedidos). */
+export async function searchActiveCustomers(term: string) {
+  const { data } = await http.get<Paginated<Customer>>('/customers', {
+    params: { search: term, is_active: true, page_size: 20, ordering: 'legal_name' },
+  })
+  return data.results
+}
+
 export async function getCustomer(id: string) {
   const { data } = await http.get<Customer>(`/customers/${id}`)
   return data

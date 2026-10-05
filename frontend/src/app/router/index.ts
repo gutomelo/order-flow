@@ -15,6 +15,8 @@ import { useSessionStore } from '@/modules/auth/stores/session'
 import { customersRoutes } from '@/modules/customers/routes'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
+import { ordersRoutes } from '@/modules/orders/routes'
+import { pricingRoutes } from '@/modules/pricing/routes'
 import { suppliersRoutes } from '@/modules/suppliers/routes'
 import { usersRoutes } from '@/modules/users/routes'
 
@@ -41,6 +43,8 @@ export const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: { name: 'dashboard' } },
       ...dashboardRoutes,
+      ...ordersRoutes,
+      ...pricingRoutes,
       ...customersRoutes,
       ...catalogRoutes,
       ...suppliersRoutes,

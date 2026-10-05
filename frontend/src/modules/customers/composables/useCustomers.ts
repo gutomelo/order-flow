@@ -43,6 +43,7 @@ export function useAddresses(customerId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => customersKeys.addresses(toValue(customerId))),
     queryFn: () => api.listAddresses(toValue(customerId)),
+    enabled: computed(() => Boolean(toValue(customerId))),
   })
 }
 

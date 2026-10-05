@@ -1,6 +1,8 @@
 # Domínio: Orders (Pedidos)
 
-> Fonte da verdade das regras de pedidos. Implementação prevista nas Phases 6–9.
+> Fonte da verdade das regras de pedidos. Phase 6 implementou rascunho, submissão (`PENDING`),
+> cancelamento antes do pagamento, numeração, preços congelados e idempotência; reserva (Phase 7),
+> pagamento (Phase 8) e envio (Phase 9) completam o fluxo. Ver [Implementação](#implementação-phase-6).
 
 ## Responsabilidade
 
@@ -16,7 +18,8 @@ aplica as regras de estado do pedido.
 classDiagram
     class Order {
       UUID id
-      string number
+      int number
+      string purchase_order_number
       UUID customer_id
       UUID warehouse_id
       OrderStatus status
@@ -25,6 +28,7 @@ classDiagram
       Decimal shipping_total
       Decimal total
       string currency
+      json shipping_snapshot
       datetime submitted_at
       datetime payment_due_at
       UUID created_by
@@ -38,6 +42,7 @@ classDiagram
       Decimal unit_price
       Decimal discount_amount
       Decimal line_total
+      PriceSource price_source
     }
     class OrderStatusHistory {
       OrderStatus from_status
@@ -138,7 +143,7 @@ stateDiagram-v2
 | O4 | `line_total = quantity * unit_price - discount_amount` | domínio (calculado, não aceito do cliente) |
 | O5 | `subtotal = Σ line_total`; `total = subtotal - discount_total + shipping_total`; `total >= 0` | domínio + CHECK `total >= 0` |
 | O6 | Linhas e preços são imutáveis a partir de `PENDING` | domínio (API não expõe edição) |
-| O7 | `number` único | UNIQUE |
+| O7 | `number` único **na organização**, sequencial e sem lacunas; atribuído na submissão | UNIQUE (`organization_id`, `number`) + contador com lock |
 | O8 | Um mesmo produto aparece no máximo uma vez por pedido | UNIQUE (`order_id`, `product_id`) |
 | O9 | Toda mudança de status tem registro em `OrderStatusHistory` | application (mesma transação) |
 | O10 | Status só muda pela máquina de estados | domínio + revisão (`domain-reviewer`) |
@@ -226,6 +231,66 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 | `OrderShipped` | pedido → `SHIPPED` | `order_id`, `shipment_id`, `tracking_code` | notifications, audit |
 | `OrderDelivered` | pedido → `DELIVERED` | `order_id`, `delivered_at` | notifications, audit |
 
+## Implementação (Phase 6)
+
+### O que existe nesta fase
+
+| Use case | Transição | Observação |
+| --- | --- | --- |
+| `SaveDraft` | — → `DRAFT` | cliente ativo; linhas, depósito e endereço opcionais |
+| `UpdateDraft` | `DRAFT` (edição) | substitui campos e linhas; recota os preços (estimativa) |
+| `SubmitOrder` | `DRAFT → PENDING` | revalida tudo, **recota e congela** preços, numera, copia o endereço |
+| `PlaceOrder` | — → `PENDING` | mesmo resultado do rascunho + submissão numa chamada; exige `Idempotency-Key` |
+| `CancelOrder` | `DRAFT`/`PENDING → CANCELLED` | motivo obrigatório; estados pagos ficam para a Phase 8 (exigem refund) |
+| `QuoteOrder` | — (leitura) | prévia de preços e totais calculados **pelo mesmo código** do pedido |
+
+A máquina de estados já contém a tabela completa acima: as transições das fases seguintes só ganham
+use cases, a tabela não muda.
+
+### Decisões
+
+- **Numeração.** `number` é inteiro, por organização, atribuído na **submissão** (rascunho não
+  consome número). Um contador por organização (`OrderNumberSequence`) é incrementado com a linha
+  bloqueada; como o incremento faz parte da transação do pedido, um rollback devolve o número —
+  sem lacunas. Custo: submissões da mesma organização se enfileiram nesse contador durante a
+  transação, aceitável para o volume B2B (ver ADR-008 para o mesmo raciocínio sobre locks curtos).
+- **Preço é estimativa até a submissão.** O rascunho é recotado a cada edição; a submissão recota
+  de novo e congela `unit_price`, `price_source`, `sku` e `product_name`.
+- **Total esperado (`expected_total`).** A submissão e o `PlaceOrder` aceitam o total que a pessoa
+  viu. Se a recotação der outro valor (tabela alterada entre a prévia e o envio), o pedido **não**
+  é submetido: `409 PRICES_CHANGED` com `details.expected` e `details.actual`. Mesmo raciocínio do
+  `expected_on_hand` no ajuste de estoque: ninguém confirma um valor que não viu.
+- **Endereço de entrega.** Escolhido entre os endereços do cliente (padrão: o de entrega padrão).
+  Na submissão o pedido grava uma **cópia** (`shipping_snapshot`); editar ou remover o endereço do
+  cliente depois não altera o pedido (regra AD4 de `customers.md`).
+- **Depósito.** Escolhido no pedido (obrigatório na submissão) e guardado para a reserva da Phase 7.
+- **Nº do pedido de compra do cliente** (`purchase_order_number`): referência B2B opcional, livre.
+- **Eventos.** `OrderCreated`/`OrderCancelled` passam a ser publicados quando existir o primeiro
+  consumidor (reserva na Phase 7, notificações na Phase 10, auditoria na Phase 12). Construir o
+  barramento sem consumidor seria infraestrutura especulativa; o `OrderStatusHistory` já registra
+  toda transição de forma transacional.
+- **Histórico append-only.** Como `StockMovement`, `OrderStatusHistory` rejeita `UPDATE`/`DELETE`
+  por trigger no banco.
+
+### Concorrência
+
+| Situação | Proteção |
+| --- | --- |
+| Duas submissões do mesmo rascunho | pedido bloqueado (`select_for_update`); a segunda vê `PENDING` e responde 200 sem efeito (idempotente por estado) |
+| Edição do rascunho durante a submissão | mesmo lock: a edição espera e então recebe `409 ORDER_NOT_EDITABLE` |
+| Submissões simultâneas de pedidos diferentes | contador bloqueado: números distintos e contíguos |
+| `POST /orders` repetido (rede, duplo clique) | `Idempotency-Key` (ADR-012): mesma resposta, um pedido só |
+
+### Endpoints
+
+| Endpoint | Permissão |
+| --- | --- |
+| `GET /api/v1/orders?status=&search=&customer=` · `GET /{id}` | `orders:read` |
+| `POST /api/v1/orders` (`Idempotency-Key`) | `orders:create` |
+| `POST /api/v1/orders/drafts` · `PATCH /{id}` · `POST /{id}/submit` | `orders:create` |
+| `POST /api/v1/orders/quote` | `orders:create` |
+| `POST /api/v1/orders/{id}/cancel` | `orders:cancel` |
+
 ## Erros de domínio
 
 | Código | HTTP | Quando |
@@ -236,6 +301,13 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 | `CUSTOMER_INACTIVE` | 422 | Cliente bloqueado/inativo |
 | `PRODUCT_UNAVAILABLE` | 422 | Produto inativo |
 | `EMPTY_ORDER` | 422 | Pedido sem linhas |
+| `INVALID_QUANTITY` | 422 | Quantidade menor que 1 (`details.product_ids`) |
+| `PRICE_NOT_FOUND` | 422 | Produto sem preço para o cliente (`pricing.md`) |
+| `PRICES_CHANGED` | 409 | `expected_total` diferente do total recotado |
+| `ORDER_NOT_EDITABLE` | 409 | Edição de pedido que não é rascunho (O6) |
+| `ADDRESS_REQUIRED` / `ADDRESS_NOT_AVAILABLE` | 422 | Sem endereço / endereço que não é do cliente |
+| `WAREHOUSE_REQUIRED` / `WAREHOUSE_NOT_AVAILABLE` | 422 | Sem depósito / depósito inexistente ou inativo |
+| `CANCEL_REASON_REQUIRED` | 422 | Cancelamento sem motivo |
 | `DUPLICATE_ORDER_LINE` | 422 | Produto repetido no pedido |
 | `ORDER_NOT_AWAITING_PAYMENT` | 409 | Pagamento em pedido fora de `AWAITING_PAYMENT` |
 | `PAYMENT_DECLINED` | 422 | Gateway recusou o pagamento (pedido segue `AWAITING_PAYMENT`) |

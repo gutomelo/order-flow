@@ -68,8 +68,8 @@ describe('AppLayout', () => {
 
     const links = (wrapper: typeof admin.wrapper) =>
       wrapper.findAll('aside nav a').map((link) => link.text())
-    expect(links(admin.wrapper)).toEqual(['Dashboard', 'Usuários', 'Equipes'])
-    expect(links(restricted.wrapper)).toEqual(['Dashboard'])
+    expect(links(admin.wrapper)).toEqual(['Dashboard', 'Pedidos', 'Usuários', 'Equipes'])
+    expect(links(restricted.wrapper)).toEqual(['Dashboard', 'Pedidos'])
   })
 
   it('shows the signed-in user and organization in the user menu', async () => {

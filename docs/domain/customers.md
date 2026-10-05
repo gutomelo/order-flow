@@ -155,6 +155,8 @@ exista (anti-IDOR): o queryset é filtrado pela organização **e** pelo cliente
 | Função | Uso |
 | --- | --- |
 | `selectors.get_active_customer(organization_id, customer_id)` | `orders` valida o cliente (CU5) |
+| `selectors.get_customer_address(organization_id, customer_id, address_id)` | `orders` valida que o endereço é do cliente |
+| `selectors.get_default_shipping_address(organization_id, customer_id)` | `orders` pré-seleciona a entrega padrão |
 
 ## Erros de domínio
 

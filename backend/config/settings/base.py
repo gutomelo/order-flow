@@ -7,6 +7,7 @@ Todo valor sensível ou dependente de ambiente vem de variáveis de ambiente
 from datetime import timedelta
 
 import django_stubs_ext
+from corsheaders.defaults import default_headers
 
 from shared.logging import build_logging_config, configure_structlog
 
@@ -35,12 +36,16 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    # Infraestrutura transversal com tabela própria
+    "shared.idempotency",
     # Módulos de negócio
     "apps.identity",
     "apps.customers",
     "apps.suppliers",
     "apps.catalog",
     "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -163,6 +168,8 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+",
+    # O mesmo conjunto de status aparece em vários campos (status, from_status, to_status).
+    "ENUM_NAME_OVERRIDES": {"OrderStatusEnum": "apps.orders.domain.status.OrderStatus"},
 }
 
 # ---------------------------------------------------------------------------
@@ -195,7 +202,8 @@ AUTH_REFRESH_COOKIE = {
 # CORS (somente as origens do frontend)
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS: list[str] = env.list("CORS_ALLOWED_ORIGINS", default=[])
-CORS_EXPOSE_HEADERS = ["X-Request-ID"]
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
+CORS_EXPOSE_HEADERS = ["X-Request-ID", "Idempotent-Replayed"]
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)
