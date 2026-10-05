@@ -1,9 +1,11 @@
 import {
   Boxes,
+  Building2,
   FolderTree,
   History,
   LayoutDashboard,
   Package,
+  Tags,
   Truck,
   Users,
   UsersRound,
@@ -23,6 +25,18 @@ export interface NavigationItem {
 
 export const primaryNavigation: NavigationItem[] = [
   { routeName: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  {
+    routeName: 'customers',
+    labelKey: 'nav.customers',
+    icon: Building2,
+    permission: 'customers:read',
+  },
+  {
+    routeName: 'customer-segments',
+    labelKey: 'nav.segments',
+    icon: Tags,
+    permission: 'customers:read',
+  },
   { routeName: 'products', labelKey: 'nav.products', icon: Package, permission: 'catalog:read' },
   {
     routeName: 'categories',

@@ -71,7 +71,7 @@ class ProductCreateSerializer(serializers.Serializer[dict[str, Any]]):
     sku = serializers.CharField(max_length=64)
     name = serializers.CharField(max_length=200)
     description = serializers.CharField(required=False, allow_blank=True, default="")
-    unit = serializers.ChoiceField(choices=UnitOfMeasure.values, default=UnitOfMeasure.UNIT)
+    unit = serializers.ChoiceField(choices=UnitOfMeasure.choices, default=UnitOfMeasure.UNIT)
     barcode = serializers.CharField(max_length=14, required=False, allow_blank=True, default="")
     category_id = serializers.UUIDField(required=False, allow_null=True, default=None)
     default_supplier_id = serializers.UUIDField(required=False, allow_null=True, default=None)
@@ -82,7 +82,7 @@ class ProductUpdateSerializer(serializers.Serializer[dict[str, Any]]):
 
     name = serializers.CharField(max_length=200, required=False)
     description = serializers.CharField(required=False, allow_blank=True)
-    unit = serializers.ChoiceField(choices=UnitOfMeasure.values, required=False)
+    unit = serializers.ChoiceField(choices=UnitOfMeasure.choices, required=False)
     barcode = serializers.CharField(max_length=14, required=False, allow_blank=True)
     category_id = serializers.UUIDField(required=False, allow_null=True)
     default_supplier_id = serializers.UUIDField(required=False, allow_null=True)

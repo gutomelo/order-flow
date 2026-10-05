@@ -6,3 +6,7 @@ class IdentityConfig(AppConfig):
     name = "apps.identity"
     label = "identity"
     verbose_name = "Identity"
+
+    def ready(self) -> None:
+        # Registra as extensões do OpenAPI (basta importar o módulo uma vez).
+        import apps.identity.api.schema  # noqa: F401

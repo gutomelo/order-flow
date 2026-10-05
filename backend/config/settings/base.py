@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     # Módulos de negócio
     "apps.identity",
+    "apps.customers",
     "apps.suppliers",
     "apps.catalog",
     "apps.inventory",

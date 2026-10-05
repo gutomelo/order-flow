@@ -33,6 +33,7 @@ clientes da sua equipe") ficam em políticas por módulo aplicadas no `get_query
 | --- | --- | --- | --- | --- | --- | --- |
 | `customers:read` | ✓ | ✓ | ✓ | | ✓ | ✓ |
 | `customers:create` / `customers:update` | ✓ | ✓ | ✓ | | | |
+| `customers:manage_segments` | ✓ | ✓ | | | | |
 | `suppliers:read` | ✓ | ✓ | | ✓ | ✓ | ✓ |
 | `suppliers:manage` | ✓ | ✓ | | | | |
 | `catalog:read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -76,6 +77,8 @@ Regra mais importante de segurança do produto ([ADR-013](../adr/013-multi-tenan
 - IDs públicos são UUIDs (não enumeráveis); números legíveis (`Order.number`) não são usados como
   chave de acesso na API.
 - Testes de API incluem acesso a objeto de outro escopo.
+- Recursos aninhados (`/customers/{id}/addresses/{address_id}`) filtram pela organização **e** pelo
+  pai da URL: o endereço de outro cliente responde 404 mesmo com um ID válido.
 
 ## Mass assignment e validação
 
@@ -122,6 +125,8 @@ fictícios. Nenhum secret em Dockerfile, compose versionado com valores reais, l
 ## Dados sensíveis em logs e erros
 
 Nunca registrar senha, JWT, refresh token, header `Authorization`, dados de cartão, secrets.
+Dados pessoais (LGPD) — nome, e-mail e telefone de contatos de clientes — também não vão para logs:
+os eventos registram apenas IDs (`customers.contact.created`, `contact_id=...`).
 O processador de logs (`shared/logging`) remove chaves sensíveis conhecidas como defesa adicional.
 Erros 500 retornam mensagem genérica com `request_id`; detalhes apenas no log.
 

@@ -197,6 +197,19 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | `SelectField` usa `aria-required` em vez de `required` | os formulários usam `novalidate`; o `required` nativo num `<select>` vazio é exposto como `invalid` antes de qualquer interação | — |
 | Filtro de datas em movimentações converte o **dia local** para limites UTC (`localDayBoundsToUtc`) | "movimentações de 04/10" deve significar o dia no fuso da pessoa, não em UTC | mandar a data crua e deixar o backend supor o fuso |
 
+### Decisões de implementação (Phase 5)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Página de **detalhe** (`/customers/:id`) com seções de endereços e contatos | cliente B2B é um agregado: dados cadastrais + N endereços + N contatos não cabem num diálogo | um diálogo gigante com abas; listas separadas por recurso |
+| Papéis (cobrança, entrega padrão, principal) movidos por **ação** (`set-billing`...), não por checkbox no formulário | a regra "exatamente um" é do backend (AD3/CT2); o frontend só pede "torne este" e recarrega | marcar/desmarcar no formulário e deixar o usuário criar estados inválidos |
+| `useZodForm` **foca o primeiro campo inválido** (validação local e erro de campo do servidor) | regra de UI do projeto que nenhum formulário cumpria desde a Phase 2 | foco manual em cada formulário |
+| Após mover papel ou remover, o foco vai para o cartão afetado ou para o título da seção (`tabindex="-1"`) | o botão clicado deixa de existir e o foco caía no `<body>` — quem usa teclado perdia a posição | deixar o navegador decidir |
+| `FormAlert` (erro geral de formulário) extraído para `components/ui` e aplicado aos 11 formulários existentes | o mesmo bloco estava copiado em 10 arquivos, com dois estilos diferentes | manter a cópia |
+| Token `--color-link` | `primary` como **texto** sobre a superfície escura tem contraste 3,45:1 (falha AA); o Lighthouse apontou no e-mail do contato | escurecer o `primary` (mudaria botões) |
+| Ações com texto visível + contexto (`Tornar cobrança` + `: Filial Campinas`) usam texto visível `aria-hidden` e rótulo completo em `sr-only` | o espaço em branco do template gerava "Tornar cobrança : Filial" e o nome acessível precisa conter o texto visível (WCAG 2.5.3) | `aria-label` montado por concatenação |
+| Preenchimento por CEP (ViaCEP) **não** implementado | seria a primeira integração externa síncrona do cadastro; registrado em `customers.md` | — |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

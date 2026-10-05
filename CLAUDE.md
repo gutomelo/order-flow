@@ -4,10 +4,11 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 4 — Inventory concluída; próxima: Phase 5 — Customers.** Existem a fundação
-técnica, `identity` (tenants, usuários, equipes, RBAC, JWT), `suppliers`, `catalog` (produtos e
-categorias) e `inventory` (depósitos, saldos, recebimentos, ajustes, transferências e o ledger de
-movimentações). Reservas de estoque são da Phase 7. Não crie models, endpoints ou telas de fases futuras
+**Fase atual: Phase 5 — Customers concluída; próxima: Phase 6 — Orders.** Existem a fundação
+técnica, `identity` (tenants, usuários, equipes, RBAC, JWT), `customers` (clientes, segmentos,
+endereços e contatos), `suppliers`, `catalog` (produtos e categorias) e `inventory` (depósitos,
+saldos, recebimentos, ajustes, transferências e o ledger de movimentações). Reservas de estoque são
+da Phase 7. Não crie models, endpoints ou telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).
 
 **Multi-tenant (ADR-013):** todo model de negócio herda `shared.tenancy.TenantScopedModel`; toda

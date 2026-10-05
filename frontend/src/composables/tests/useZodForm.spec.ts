@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- componentes de teste montados inline */
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
@@ -94,5 +95,60 @@ describe('useZodForm', () => {
     await Promise.all([form.submit(slow), form.submit(slow)])
 
     expect(calls).toBe(1)
+  })
+})
+
+describe('useZodForm focus', () => {
+  // Formulário real com dois campos; o botão fica fora do <form> como nos diálogos.
+  function mountForm() {
+    let form!: ReturnType<typeof useZodForm<typeof schema>>
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          form = useZodForm(schema, { sku: 'A-1', barcode: '' })
+          const field = (name: 'sku' | 'barcode') =>
+            h('input', {
+              id: name,
+              'aria-invalid': form.errors.value[name] ? 'true' : undefined,
+            })
+          return () =>
+            h('div', [
+              h('form', { id: 'f' }, [field('sku'), field('barcode')]),
+              h('button', { type: 'submit', form: 'f', id: 'save' }),
+            ])
+        },
+      }),
+      { global: { plugins: [createAppI18n()] }, attachTo: document.body },
+    )
+    ;(wrapper.find('#save').element as HTMLButtonElement).focus()
+    return { form, wrapper }
+  }
+
+  it('moves focus to the first invalid field after client-side validation', async () => {
+    const { form, wrapper } = mountForm()
+    form.values.sku = ''
+
+    await form.submit(async () => undefined)
+
+    expect(document.activeElement).toBe(wrapper.find('#sku').element)
+    wrapper.unmount()
+  })
+
+  it('moves focus to the field rejected by the server', async () => {
+    const { form, wrapper } = mountForm()
+
+    await form.submit(() =>
+      Promise.reject(
+        new ApiError({
+          status: 409,
+          code: 'BARCODE_ALREADY_IN_USE',
+          message: 'Já existe.',
+          details: { field: 'barcode' },
+        }),
+      ),
+    )
+
+    expect(document.activeElement).toBe(wrapper.find('#barcode').element)
+    wrapper.unmount()
   })
 })

@@ -88,6 +88,10 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   "origem → destino", o PostgreSQL detectou o deadlock e o teste falhou, como esperado. No
   frontend, enviar o saldo antigo como `expected_on_hand` após um conflito e mostrar o erro de
   inativação como toast (atrás do `<dialog>` modal) fazem os testes falharem.
+- Phase 5: sem o lock no segmento (ao atribuir **ou** ao inativar) e sem o lock no cliente (papéis
+  de endereço), os testes de concorrência falham; sem a promoção de papel e sem o filtro por cliente
+  nos recursos aninhados (IDOR), os testes de API falham. No frontend, sem a invalidação em
+  `onSettled` e sem o foco no primeiro campo inválido, os testes falham.
 
 ## Teste de concorrência — esqueleto
 

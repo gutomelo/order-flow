@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { CircleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
+import FormAlert from '@/components/ui/FormAlert.vue'
 
 /**
  * Confirmação de ação destrutiva: texto específico e botão com o verbo da ação.
@@ -33,14 +33,7 @@ const { t } = useI18n()
 
 <template>
   <BaseDialog v-model:open="open" :title="title" :description="description">
-    <div
-      v-if="error"
-      class="flex items-start gap-2 rounded-md border border-danger/40 p-3 text-sm"
-      role="alert"
-    >
-      <CircleAlert class="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
-      {{ error }}
-    </div>
+    <FormAlert :message="error" />
     <template #footer>
       <BaseButton variant="secondary" :disabled="loading" @click="open = false">
         {{ t('common.cancel') }}

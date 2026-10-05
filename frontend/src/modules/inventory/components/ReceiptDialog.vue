@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { CircleAlert, Plus, Trash2 } from '@lucide/vue'
+import { Plus, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useToastStore } from '@/app/stores/toasts'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
+import FormAlert from '@/components/ui/FormAlert.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import TextAreaField from '@/components/ui/TextAreaField.vue'
 import TextField from '@/components/ui/TextField.vue'
@@ -132,14 +133,7 @@ async function onSubmit() {
     :description="t('inventory.receipt.description')"
   >
     <form id="receipt-form" class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-      <div
-        v-if="header.formError.value"
-        class="flex items-start gap-2 rounded-md border border-danger/40 p-3 text-sm"
-        role="alert"
-      >
-        <CircleAlert class="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
-        {{ header.formError.value }}
-      </div>
+      <FormAlert :message="header.formError.value" />
 
       <div class="grid gap-4 sm:grid-cols-2">
         <SelectField

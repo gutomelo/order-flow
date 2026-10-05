@@ -51,7 +51,7 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | Módulo | Dados (tabelas) | Expõe (application) |
 | --- | --- | --- |
 | `identity` | `Organization` (tenant), `User`, `Team`, blacklist de tokens | usuário atual, permissões efetivas, catálogo de permissões |
-| `customers` | `Customer`, contatos, segmento | `get_active_customer` |
+| `customers` | `CustomerSegment`, `Customer`, `CustomerAddress`, `CustomerContact` | `selectors.get_active_customer` |
 | `suppliers` | `Supplier` | `selectors.get_active_supplier` |
 | `catalog` | `Product`, `Category` | `selectors.get_sellable_products`, `selectors.descendant_ids` |
 | `pricing` | `PriceList`, regras de desconto | `price_lines(customer, lines)` |

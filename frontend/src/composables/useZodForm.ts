@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { z } from 'zod'
 
@@ -12,6 +12,7 @@ type FieldErrors<T> = Partial<Record<keyof T & string, string>>
  * - Validação client-side = feedback antecipado; o backend continua sendo a autoridade.
  * - Erros de validação do backend (`VALIDATION_ERROR.details.fields`) são mapeados para os campos.
  * - `submit` impede envio duplo enquanto a requisição está em andamento.
+ * - Com erro de campo (local ou do servidor), o foco vai para o primeiro campo inválido.
  */
 export function useZodForm<Schema extends z.ZodObject>(
   schema: Schema,
@@ -62,6 +63,19 @@ export function useZodForm<Schema extends z.ZodObject>(
   }
 
   /**
+   * Foco no primeiro campo com `aria-invalid` do formulário que foi enviado. O botão de envio pode
+   * ficar fora do `<form>` (rodapé do diálogo, `form="..."`): `.form` resolve os dois casos.
+   */
+  async function focusFirstInvalid(origin: Element | null) {
+    await nextTick()
+    const form =
+      origin instanceof HTMLButtonElement || origin instanceof HTMLInputElement
+        ? origin.form
+        : origin?.closest('form')
+    ;(form ?? document).querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }
+
+  /**
    * Valida e executa `action`. Erros de validação do servidor vão para os campos; os demais
    * são repassados ao `onError` (ex.: mensagem geral do formulário).
    */
@@ -70,18 +84,25 @@ export function useZodForm<Schema extends z.ZodObject>(
     onError?: (error: unknown) => unknown,
   ): Promise<boolean> {
     if (isSubmitting.value) return false
+    const origin = document.activeElement
     formError.value = null
     const data = validate()
-    if (!data) return false
+    if (!data) {
+      await focusFirstInvalid(origin)
+      return false
+    }
     isSubmitting.value = true
+    let fieldError = false
     try {
       await action(data)
       return true
     } catch (error) {
-      if (!applyServerError(error)) await onError?.(error)
+      fieldError = applyServerError(error)
+      if (!fieldError) await onError?.(error)
       return false
     } finally {
       isSubmitting.value = false
+      if (fieldError) await focusFirstInvalid(origin)
     }
   }
 

@@ -115,6 +115,11 @@ POST /api/v1/orders
 ## Padrões de API
 
 - Base `/api/v1/`; OpenAPI em `/api/schema/`, Swagger UI em `/api/docs/`.
+- O schema declara o esquema `jwtAuth` (Bearer) por uma extensão do drf-spectacular em
+  `apps/identity/api/schema.py`: o autenticador próprio (`OrganizationAwareJWTAuthentication`) não
+  é reconhecido automaticamente. `manage.py spectacular --validate` deve terminar sem avisos.
+- Serializers de escrita usam `TextChoices.choices` (não `.values`) para gerar o mesmo enum do
+  model no OpenAPI.
 - Ações de domínio explícitas: `POST /api/v1/orders/{id}/cancel`, `/pay`, `/ship`.
 - Paginação padrão `PageNumberPagination` com `page_size` (padrão 25, máx. 100) e resposta:
 

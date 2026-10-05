@@ -19,6 +19,10 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Português | Código | Definição |
 | --- | --- | --- |
 | Cliente | `Customer` | Empresa compradora (B2B), identificada por CNPJ (`tax_id`) |
+| Segmento comercial | `CustomerSegment` | Classificação do cliente definida pela organização (`code` imutável); base das tabelas de preço |
+| Endereço do cliente | `CustomerAddress` | Endereço com papéis: cobrança (`is_billing`) e entrega padrão (`is_default_shipping`) |
+| Contato do cliente | `CustomerContact` | Pessoa do cliente (dado pessoal, LGPD); um é o principal (`is_primary`) |
+| CEP / UF | `postal_code` / `state` | CEP com 8 dígitos sem máscara / sigla da unidade da federação (`BrazilianState`) |
 | Fornecedor | `Supplier` | Empresa que fornece produtos |
 | Produto | `Product` | Item vendável identificado por `sku`; não tem preço (ver `pricing`) |
 | SKU | `Product.sku` | Código interno do produto, único por organização, imutável |

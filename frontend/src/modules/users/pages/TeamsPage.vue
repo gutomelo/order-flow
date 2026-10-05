@@ -7,6 +7,7 @@ import { useToastStore } from '@/app/stores/toasts'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import FormAlert from '@/components/ui/FormAlert.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import TextField from '@/components/ui/TextField.vue'
 import { useApiErrorMessage } from '@/composables/useApiErrorMessage'
@@ -114,9 +115,7 @@ async function onSubmit() {
       :title="editing ? t('teams.form.renameTitle') : t('teams.form.createTitle')"
     >
       <form id="team-form" class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-        <p v-if="form.formError.value" class="text-sm font-medium text-danger" role="alert">
-          {{ form.formError.value }}
-        </p>
+        <FormAlert :message="form.formError.value" />
         <TextField
           v-model="form.values.name"
           :label="t('teams.fields.name')"

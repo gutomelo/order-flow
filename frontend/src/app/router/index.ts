@@ -12,6 +12,7 @@ import { i18n } from '@/app/providers/i18n'
 import { authRoutes } from '@/modules/auth/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { useSessionStore } from '@/modules/auth/stores/session'
+import { customersRoutes } from '@/modules/customers/routes'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
 import { suppliersRoutes } from '@/modules/suppliers/routes'
@@ -40,6 +41,7 @@ export const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: { name: 'dashboard' } },
       ...dashboardRoutes,
+      ...customersRoutes,
       ...catalogRoutes,
       ...suppliersRoutes,
       ...inventoryRoutes,

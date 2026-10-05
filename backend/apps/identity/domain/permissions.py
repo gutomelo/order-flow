@@ -21,6 +21,7 @@ class Permission(StrEnum):
     CUSTOMERS_READ = "customers:read"
     CUSTOMERS_CREATE = "customers:create"
     CUSTOMERS_UPDATE = "customers:update"
+    CUSTOMERS_MANAGE_SEGMENTS = "customers:manage_segments"
     SUPPLIERS_READ = "suppliers:read"
     SUPPLIERS_MANAGE = "suppliers:manage"
     CATALOG_READ = "catalog:read"
@@ -48,7 +49,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.ADMIN: frozenset(Permission),
     Role.MANAGER: frozenset(
         {
-            P.CUSTOMERS_READ, P.CUSTOMERS_CREATE, P.CUSTOMERS_UPDATE,
+            P.CUSTOMERS_READ, P.CUSTOMERS_CREATE, P.CUSTOMERS_UPDATE, P.CUSTOMERS_MANAGE_SEGMENTS,
             P.SUPPLIERS_READ, P.SUPPLIERS_MANAGE,
             P.CATALOG_READ, P.CATALOG_MANAGE,
             P.INVENTORY_READ, P.INVENTORY_UPDATE, P.INVENTORY_ADJUST,

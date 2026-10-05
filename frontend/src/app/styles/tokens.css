@@ -17,6 +17,8 @@
   --color-primary-hover: #1d4ed8;
   --color-primary-subtle: #dbeafe;
   --color-on-primary: #ffffff;
+  /* Texto de link: o primary não tem contraste AA como texto sobre a superfície escura. */
+  --color-link: #1d4ed8;
 
   --color-background: #f8fafc;
   --color-surface: #ffffff;
@@ -47,6 +49,7 @@
   --color-primary: #2563eb;
   --color-primary-hover: #3b82f6;
   --color-primary-subtle: #1e3a8a;
+  --color-link: #93c5fd;
   --color-background: #020617;
   --color-surface: #0f172a;
   --color-surface-muted: #1e293b;
@@ -69,6 +72,7 @@
     --color-primary: #2563eb;
     --color-primary-hover: #3b82f6;
     --color-primary-subtle: #1e3a8a;
+    --color-link: #93c5fd;
     --color-background: #020617;
     --color-surface: #0f172a;
     --color-surface-muted: #1e293b;

@@ -4,7 +4,8 @@ from apps.identity.domain.permissions import Role
 from apps.identity.models import User
 from apps.identity.tests.factories import authenticated_client, make_user
 from apps.suppliers.models import Supplier
-from apps.suppliers.tests.factories import generate_cnpj, make_supplier
+from apps.suppliers.tests.factories import make_supplier
+from shared.testing.documents import generate_cnpj
 
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
 

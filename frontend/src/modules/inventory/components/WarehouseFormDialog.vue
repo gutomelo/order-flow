@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useToastStore } from '@/app/stores/toasts'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
+import FormAlert from '@/components/ui/FormAlert.vue'
 import TextField from '@/components/ui/TextField.vue'
 import { useApiErrorMessage } from '@/composables/useApiErrorMessage'
 import { useZodForm } from '@/composables/useZodForm'
@@ -54,9 +55,7 @@ async function onSubmit() {
     :title="isEdit ? t('inventory.warehouses.editTitle') : t('inventory.warehouses.createTitle')"
   >
     <form id="warehouse-form" class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-      <p v-if="form.formError.value" class="text-sm font-medium text-danger" role="alert">
-        {{ form.formError.value }}
-      </p>
+      <FormAlert :message="form.formError.value" />
       <TextField
         v-if="!isEdit"
         v-model="form.values.code"
