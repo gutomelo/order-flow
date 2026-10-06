@@ -28,6 +28,8 @@ export interface OrderSummary {
   currency: string
   lines_count: number
   submitted_at: string | null
+  /** Validade da reserva enquanto aguarda pagamento. */
+  payment_due_at: string | null
   created_at: string
   updated_at: string
 }

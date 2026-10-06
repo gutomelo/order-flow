@@ -206,6 +206,16 @@ CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
 CORS_EXPOSE_HEADERS = ["X-Request-ID", "Idempotent-Replayed"]
 
 # ---------------------------------------------------------------------------
+# Regras de negócio configuráveis (docs/domain/inventory.md, orders.md)
+# ---------------------------------------------------------------------------
+# Quanto tempo a reserva segura o estoque aguardando pagamento (B2B: boleto/PIX).
+STOCK_RESERVATION_TTL_HOURS = env.int("STOCK_RESERVATION_TTL_HOURS", default=48)
+# Espera máxima por lock de estoque antes de responder STOCK_BUSY (ADR-008).
+STOCK_LOCK_TIMEOUT_MS = env.int("STOCK_LOCK_TIMEOUT_MS", default=3000)
+# Pedido PENDING sem atividade por mais que isto é cancelado (PENDING_TIMEOUT).
+ORDER_PENDING_MAX_AGE_DAYS = env.int("ORDER_PENDING_MAX_AGE_DAYS", default=7)
+
+# ---------------------------------------------------------------------------
 # Celery (ADR-005)
 # ---------------------------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")

@@ -60,7 +60,8 @@ class Order(TenantScopedModel):
     total = _money(default=0)
     currency = models.CharField(max_length=3, default=DEFAULT_CURRENCY)
     submitted_at = models.DateTimeField(null=True, blank=True)
-    payment_due_at = models.DateTimeField(null=True, blank=True)  # Phase 7 (reserva)
+    # Validade da reserva enquanto AWAITING_PAYMENT (STOCK_RESERVATION_TTL_HOURS).
+    payment_due_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
@@ -100,11 +101,21 @@ class Order(TenantScopedModel):
                 name="orders_order_submitted_fields_check",
             ),
             models.CheckConstraint(condition=Q(currency="BRL"), name="orders_order_currency_check"),
+            models.CheckConstraint(  # aguardando pagamento sempre tem prazo (reserva ativa)
+                condition=~Q(status=OrderStatus.AWAITING_PAYMENT) | Q(payment_due_at__isnull=False),
+                name="orders_order_payment_due_check",
+            ),
         ]
         indexes = [
             models.Index(fields=["organization", "status"], name="orders_org_status_idx"),
             models.Index(fields=["organization", "customer"], name="orders_org_customer_idx"),
             models.Index(fields=["organization", "-created_at"], name="orders_org_created_idx"),
+            # Job de expiração: só os pedidos aguardando pagamento, pelo prazo.
+            models.Index(
+                fields=["payment_due_at"],
+                condition=Q(status=OrderStatus.AWAITING_PAYMENT),
+                name="orders_awaiting_due_idx",
+            ),
         ]
 
     def __str__(self) -> str:

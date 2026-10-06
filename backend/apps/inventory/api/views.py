@@ -17,6 +17,8 @@ from apps.identity.domain.permissions import Permission
 from apps.identity.models import User
 from apps.inventory.api.serializers import (
     AdjustmentCreateSerializer,
+    AvailabilityQuerySerializer,
+    AvailabilitySerializer,
     ReceiptCreateSerializer,
     ReceiptSerializer,
     StockItemSerializer,
@@ -38,6 +40,7 @@ from apps.inventory.application.commands.transfer_stock import (
     TransferStock,
     TransferStockCommand,
 )
+from apps.inventory.application.queries import stock_levels
 from apps.inventory.models import StockItem, StockMovement, Warehouse
 from shared.api.activation import ActivationActionsMixin
 from shared.permissions import HasPermission, HasReadWritePermission
@@ -271,3 +274,52 @@ class TransferView(APIView):
             "destination": StockItemSerializer(by_id[result.destination.id]).data,
         }
         return Response(body, status=status.HTTP_201_CREATED)
+
+
+class AvailabilityView(APIView):
+    """Disponível por produto num depósito — informação para a tela de pedido.
+
+    Leitura sem lock: o número pode mudar até a reserva, que é quem decide (ADR-008).
+    """
+
+    permission_classes = (IsAuthenticated, HasPermission(Permission.INVENTORY_READ))
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("warehouse", OpenApiTypes.UUID, required=True),
+            OpenApiParameter(
+                "products",
+                OpenApiTypes.UUID,
+                required=True,
+                many=True,
+                explode=False,
+                description="IDs separados por vírgula (até 200).",
+            ),
+        ],
+        responses=AvailabilitySerializer(many=True),
+    )
+    def get(self, request: Request) -> Response:
+        raw = request.query_params.get("products", "")
+        query = AvailabilityQuerySerializer(
+            data={
+                "warehouse": request.query_params.get("warehouse"),
+                "products": [p for p in raw.split(",") if p],
+            }
+        )
+        query.is_valid(raise_exception=True)
+        levels = stock_levels(
+            organization_id_of(request),
+            query.validated_data["warehouse"],
+            query.validated_data["products"],
+        )
+        body = [
+            {
+                "product_id": pid,
+                "on_hand": lv.on_hand,
+                "reserved": lv.reserved,
+                "available": lv.available,
+            }
+            for pid, lv in levels.items()
+        ]
+        # `many=True` recebe a lista; os stubs tipam a instância como um único item.
+        return Response(AvailabilitySerializer(cast(Any, body), many=True).data)

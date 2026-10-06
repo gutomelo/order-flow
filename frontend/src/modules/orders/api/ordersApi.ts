@@ -53,6 +53,12 @@ export async function placeOrder(
   return data
 }
 
+/** Nova tentativa de reserva de um pedido Pendente. */
+export async function reserveOrder(id: string) {
+  const { data } = await http.post<Order>(`/orders/${id}/reserve`)
+  return data
+}
+
 export async function cancelOrder(id: string, reason: string) {
   const { data } = await http.post<Order>(`/orders/${id}/cancel`, { reason })
   return data

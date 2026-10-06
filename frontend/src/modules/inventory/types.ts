@@ -9,6 +9,14 @@ export const MOVEMENT_TYPES = [
 ] as const
 export type MovementType = (typeof MOVEMENT_TYPES)[number]
 
+/** Saldo de um produto num depósito (informativo; a reserva decide). */
+export interface StockAvailability {
+  product_id: string
+  on_hand: number
+  reserved: number
+  available: number
+}
+
 export interface Warehouse {
   id: string
   code: string

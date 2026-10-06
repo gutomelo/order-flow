@@ -23,7 +23,12 @@ from apps.orders.api.serializers import (
     QuoteSerializer,
     SubmitSerializer,
 )
-from apps.orders.application.commands import cancel_order, drafts, submission
+from apps.orders.application.commands import (
+    cancel_order,
+    drafts,
+    reserve_order_stock,
+    submission,
+)
 from apps.orders.application.queries import quote_order
 from apps.orders.domain.lines import LineRequest
 from apps.orders.models import Order
@@ -41,6 +46,7 @@ _ACTION_PERMISSIONS: dict[str, Permission] = {
     "partial_update": Permission.ORDERS_CREATE,
     "submit": Permission.ORDERS_CREATE,
     "quote": Permission.ORDERS_CREATE,
+    "reserve": Permission.ORDERS_CREATE,
     "cancel": Permission.ORDERS_CANCEL,
 }
 
@@ -152,6 +158,15 @@ class OrderViewSet(
             self.actor_id,
             order.id,
             expected_total=serializer.validated_data.get("expected_total"),
+        )
+        return self._respond(order)
+
+    @extend_schema(request=None, responses=OrderSerializer)
+    @action(detail=True, methods=["post"])
+    def reserve(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        order = reserve_order_stock.reserve_order_stock(
+            self.organization_id, self.actor_id, order.id
         )
         return self._respond(order)
 

@@ -61,6 +61,7 @@ class OrderSummarySerializer(serializers.ModelSerializer[Order]):
             "currency",
             "lines_count",
             "submitted_at",
+            "payment_due_at",
             "created_at",
             "updated_at",
         )

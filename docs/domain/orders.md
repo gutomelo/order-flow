@@ -1,6 +1,8 @@
 # Domínio: Orders (Pedidos)
 
-> Fonte da verdade das regras de pedidos. Phase 6 implementou rascunho, submissão (`PENDING`),
+> Fonte da verdade das regras de pedidos. Phase 7 acrescentou a reserva de estoque (envio →
+> `AWAITING_PAYMENT`, expiração, pedidos parados) — ver [Phase 7](#implementação-phase-7).
+> Phase 6 implementou rascunho, submissão (`PENDING`),
 > cancelamento antes do pagamento, numeração, preços congelados e idempotência; reserva (Phase 7),
 > pagamento (Phase 8) e envio (Phase 9) completam o fluxo. Ver [Implementação](#implementação-phase-6).
 
@@ -179,13 +181,17 @@ Uma única transação (curta, sem chamadas externas):
 2. Validar produtos ativos e carregar snapshot (`catalog.application`).
 3. Calcular preços e descontos (`pricing.application` → `PricingStrategy` do cliente).
 4. Criar `Order` (`PENDING`) + `OrderLine`s + `OrderStatusHistory` (`— → PENDING`).
-5. Reservar estoque de todas as linhas (`inventory.application.ReserveStock`, ADR-008).
-6. Transicionar para `AWAITING_PAYMENT`, definir `payment_due_at = reservation.expires_at`.
-7. Publicar `OrderCreated` e `StockReserved` (despacho após commit).
+5. Tentar reservar todas as linhas (`inventory`, ADR-008), num **savepoint**.
+6. Com estoque: transicionar para `AWAITING_PAYMENT`, `payment_due_at = agora + 48 h`.
+   Sem estoque em alguma linha (ou `STOCK_BUSY`): desfazer só o savepoint — o pedido fica
+   `PENDING`, numerado, sem reserva (decisão de produto da Phase 7, ver abaixo).
+7. Publicar eventos (quando houver consumidores, ver `event-driven.md`).
 8. Gravar resposta no registro de idempotência (ADR-012) e commit → `201 Created`.
 
-Estoque insuficiente em qualquer linha → rollback total, `409 INSUFFICIENT_STOCK` com
-`details.lines = [{product_id, requested, available}]`; nenhum pedido é criado.
+> Mudança em relação ao desenho original: antes, faltar estoque recusava o pedido inteiro
+> (`409`, nada criado). Em B2B isso descartava o trabalho do vendedor por um item; agora o pedido
+> é aceito como `PENDING` e a reserva é tentada de novo depois (`POST /orders/{id}/reserve`, que
+> continua respondendo `409 INSUFFICIENT_STOCK` com `details.lines`).
 
 ## Fluxo de pagamento: `PayOrder`
 
@@ -230,6 +236,27 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 | `OrderStatusChanged` | qualquer transição | `order_id`, `from`, `to`, `changed_by` | audit |
 | `OrderShipped` | pedido → `SHIPPED` | `order_id`, `shipment_id`, `tracking_code` | notifications, audit |
 | `OrderDelivered` | pedido → `DELIVERED` | `order_id`, `delivered_at` | notifications, audit |
+
+## Implementação (Phase 7)
+
+| Use case | Transição | Observação |
+| --- | --- | --- |
+| `SubmitOrder` / `PlaceOrder` | … → `PENDING` → `AWAITING_PAYMENT` | reserva no savepoint; sem estoque, para em `PENDING` |
+| `ReserveOrderStock` (`POST /orders/{id}/reserve`) | `PENDING → AWAITING_PAYMENT` | ação explícita: falta é erro `409 INSUFFICIENT_STOCK`; idempotente por estado |
+| `CancelOrder` | `AWAITING_PAYMENT → CANCELLED` | libera a reserva na mesma transação (`RELEASED`) |
+| `ExpireUnpaidOrder` (Beat, 1/min) | `AWAITING_PAYMENT → PENDING` | reserva `EXPIRED`; `changed_by` vazio (sistema) |
+| `CancelStalePendingOrders` (Beat, diário) | `PENDING → CANCELLED` | parado há mais de `ORDER_PENDING_MAX_AGE_DAYS` (7); motivo `PENDING_TIMEOUT` |
+
+- **Validade da reserva:** `STOCK_RESERVATION_TTL_HOURS`, padrão **48 h** (prazo de boleto/PIX
+  B2B; o valor original de 30 min era de e-commerce). CHECK no banco: `AWAITING_PAYMENT` sempre
+  tem `payment_due_at`.
+- **Jobs em lote** buscam IDs candidatos sem lock e tratam cada pedido na própria transação com
+  `select_for_update(skip_locked=True)`: pedido em uso agora é pulado e volta na próxima execução.
+- **Ordem de locks:** pedido → contador de números (só na submissão) → depósito → itens → reservas.
+- **Contador como serializador:** toda submissão trava o contador de números da organização; por
+  isso as submissões da mesma organização já são serializadas e a disputa por estoque só aparece
+  de verdade em reserva explícita, cancelamento e expiração — é onde os testes de concorrência
+  disputam (ver `testing-strategy.md`).
 
 ## Implementação (Phase 6)
 

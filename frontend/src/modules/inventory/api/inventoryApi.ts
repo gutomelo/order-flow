@@ -1,4 +1,5 @@
 import type {
+  StockAvailability,
   MovementFilters,
   ReceiptInput,
   StockFilters,
@@ -12,6 +13,13 @@ import { localDayBoundsToUtc } from '@/utils/datetime'
 
 export const STOCK_PAGE_SIZE = 25
 export const MOVEMENTS_PAGE_SIZE = 50
+
+export async function getAvailability(warehouseId: string, productIds: string[]) {
+  const { data } = await http.get<StockAvailability[]>('/inventory/availability', {
+    params: { warehouse: warehouseId, products: productIds.join(',') },
+  })
+  return data
+}
 
 export async function listWarehouses() {
   const { data } = await http.get<Warehouse[]>('/inventory/warehouses')

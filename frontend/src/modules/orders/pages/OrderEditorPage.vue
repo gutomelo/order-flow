@@ -14,7 +14,7 @@ import TextField from '@/components/ui/TextField.vue'
 import { useApiErrorMessage } from '@/composables/useApiErrorMessage'
 import { useIdempotencyKey } from '@/composables/useIdempotencyKey'
 import { useAddresses } from '@/modules/customers/composables/useCustomers'
-import { useWarehouses } from '@/modules/inventory/composables/useInventory'
+import { useAvailability, useWarehouses } from '@/modules/inventory/composables/useInventory'
 import CustomerPicker, { type CustomerOption } from '@/modules/orders/components/CustomerPicker.vue'
 import OrderLinesEditor, {
   type EditorLine,
@@ -28,7 +28,7 @@ import {
   useSaveDraft,
   useSubmitOrder,
 } from '@/modules/orders/composables/useOrders'
-import { formatOrderNumber } from '@/modules/orders/format'
+import { useSubmittedNotice } from '@/modules/orders/composables/useSubmittedNotice'
 import type { DraftInput, LineInput } from '@/modules/orders/types'
 import { ApiError } from '@/services/http/apiError'
 import { formatMoney } from '@/utils/money'
@@ -43,6 +43,7 @@ const { t } = useI18n()
 const router = useRouter()
 const toasts = useToastStore()
 const errorMessage = useApiErrorMessage()
+const notifySubmitted = useSubmittedNotice()
 
 const newLine = (): EditorLine => ({ key: crypto.randomUUID(), product: null, quantity: '1' })
 
@@ -100,6 +101,15 @@ const warehouseOptions = computed(() => [
   { value: '', label: t('orders.editor.chooseWarehouse') },
   ...activeWarehouses.value.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
 ])
+
+// Disponível de cada item no depósito escolhido — só antecipa a falta.
+const lineProductIds = computed(() =>
+  lines.value.flatMap((line) => (line.product ? [line.product.id] : [])),
+)
+const availability = useAvailability(warehouseId, lineProductIds)
+const availabilityMap = computed(
+  () => new Map((availability.data.value ?? []).map((a) => [a.product_id, a.available])),
+)
 
 // Endereços do cliente: ao trocar de cliente (ou se o escolhido sumiu), volta para a entrega padrão.
 const addresses = useAddresses(() => customer.value?.id ?? '')
@@ -295,7 +305,7 @@ async function onSubmit() {
         key: keyFor(),
       })
     }
-    toasts.success(t('orders.editor.submitted', { number: formatOrderNumber(order.number) }))
+    notifySubmitted(order)
     await router.push({ name: 'order-detail', params: { id: order.id } })
   } catch (error) {
     applyServerError(error)
@@ -392,7 +402,12 @@ async function onSubmit() {
           <h2 id="order-lines-heading" class="text-base font-semibold">
             {{ t('orders.editor.linesSection') }}
           </h2>
-          <OrderLinesEditor v-model:lines="lines" :errors="allLineErrors" :quote="quoteMap" />
+          <OrderLinesEditor
+            v-model:lines="lines"
+            :errors="allLineErrors"
+            :quote="quoteMap"
+            :availability="availabilityMap"
+          />
         </section>
       </div>
 

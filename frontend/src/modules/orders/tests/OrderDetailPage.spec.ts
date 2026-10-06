@@ -2,6 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/App.vue'
+import * as inventoryApi from '@/modules/inventory/api/inventoryApi'
 import * as ordersApi from '@/modules/orders/api/ordersApi'
 import { buildOrder, buildQuote } from '@/modules/orders/tests/fixtures'
 import { ApiError } from '@/services/http/apiError'
@@ -13,12 +14,17 @@ vi.mock('@/modules/orders/api/ordersApi', async (importOriginal) => ({
   submitOrder: vi.fn(),
   cancelOrder: vi.fn(),
   quoteOrder: vi.fn(),
+  reserveOrder: vi.fn(),
+}))
+vi.mock('@/modules/inventory/api/inventoryApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof inventoryApi>()),
+  getAvailability: vi.fn(),
 }))
 
 const api = vi.mocked(ordersApi)
 const seller = buildCurrentUser({
   role: 'SALES',
-  permissions: ['orders:read', 'orders:create', 'orders:cancel'],
+  permissions: ['orders:read', 'orders:create', 'orders:cancel', 'inventory:read'],
 })
 const viewer = buildCurrentUser({ role: 'VIEWER', permissions: ['orders:read'] })
 
@@ -97,7 +103,8 @@ describe('OrderDetailPage', () => {
     await flushPromises()
 
     expect(api.submitOrder).toHaveBeenLastCalledWith('o-1', '8.00')
-    expect(wrapper.text()).toContain('Pedido #000001 enviado.')
+    // Mock devolve PENDING: enviado, mas sem estoque para reservar.
+    expect(wrapper.text()).toContain('Pedido #000001 enviado, mas ficou pendente')
   })
 
   it('requires a reason to cancel', async () => {
@@ -126,5 +133,64 @@ describe('OrderDetailPage', () => {
 
     const labels = wrapper.findAll('main button, main a').map((el) => el.text())
     expect(labels.some((l) => /Enviar|Editar|Cancelar|Descartar/.test(l))).toBe(false)
+  })
+
+  it('explains a missing reservation, shows what is short and lists each shortage on retry', async () => {
+    api.getOrder.mockResolvedValue(buildOrder({ status: 'PENDING', number: 3 }))
+    vi.mocked(inventoryApi.getAvailability).mockResolvedValue([
+      { product_id: 'p-cola', on_hand: 1, reserved: 0, available: 1 },
+    ])
+    api.reserveOrder.mockRejectedValue(
+      new ApiError({
+        status: 409,
+        code: 'INSUFFICIENT_STOCK',
+        message: 'Estoque insuficiente.',
+        details: { lines: [{ product_id: 'p-cola', requested: 2, available: 1 }] },
+      }),
+    )
+    const { wrapper } = await mountWithPlugins(App, { route: '/orders/o-1', user: seller })
+    await flushPromises()
+
+    const panel = wrapper.find('section[aria-labelledby="reservation-heading"]')
+    expect(panel.text()).toContain('Sem reserva de estoque')
+    expect(wrapper.find('tbody').text()).toContain('Faltam 1')
+
+    await button(wrapper, 'Reservar estoque').trigger('click')
+    await flushPromises()
+
+    expect(api.reserveOrder).toHaveBeenCalledWith('o-1')
+    expect(panel.text()).toContain('COLA: pedido 2, disponível 1')
+  })
+
+  it('confirms a successful reservation with its expiry', async () => {
+    api.getOrder.mockResolvedValue(buildOrder({ status: 'PENDING', number: 3 }))
+    vi.mocked(inventoryApi.getAvailability).mockResolvedValue([])
+    api.reserveOrder.mockResolvedValue(
+      buildOrder({
+        status: 'AWAITING_PAYMENT',
+        number: 3,
+        payment_due_at: '2026-10-08T12:00:00Z',
+      }),
+    )
+    const { wrapper } = await mountWithPlugins(App, { route: '/orders/o-1', user: seller })
+    await flushPromises()
+
+    await button(wrapper, 'Reservar estoque').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toMatch(/Estoque reservado até 0?8\/10\/2026/)
+  })
+
+  it('tells that cancelling a reserved order gives the stock back', async () => {
+    api.getOrder.mockResolvedValue(
+      buildOrder({ status: 'AWAITING_PAYMENT', number: 3, payment_due_at: '2026-10-08T12:00:00Z' }),
+    )
+    const { wrapper } = await mountWithPlugins(App, { route: '/orders/o-1', user: seller })
+    await flushPromises()
+
+    expect(wrapper.text()).toMatch(/Estoque reservado até 0?8\/10\/2026/)
+    await button(wrapper, 'Cancelar pedido').trigger('click')
+
+    expect(wrapper.text()).toContain('O estoque reservado volta a ficar disponível')
   })
 })

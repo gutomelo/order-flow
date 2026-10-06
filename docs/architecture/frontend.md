@@ -222,6 +222,15 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Valores monetários como string decimal; `formatMoney`/`parseMoneyInput` em `utils/money.ts` ("3,50" → "3.50") | `float` e vírgula decimal pt-BR | `Number()` no input |
 | `key` de diálogo **não** depende de dados recarregados | a recarga após criar uma tabela de preço remontava o diálogo aberto (bug achado no E2E; teste de regressão) | — |
 
+### Decisões de implementação (Phase 7)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Coluna "Disponível" no editor e no pedido Pendente, com aviso em texto + ícone ("Acima do disponível", "Faltam N") | antecipar a falta sem bloquear (o backend decide na reserva) | bloquear o envio no cliente |
+| Envio sem estoque → toast `warning` (novo tom), não erro | o pedido foi aceito (Pendente); não é falha nem sucesso pleno | toast de erro ou sucesso |
+| Painel "Sem reserva de estoque" com "Reservar estoque" e a lista de faltas do `409` | pedido Pendente precisa de um próximo passo claro | só o status no selo |
+| Mutations de pedido invalidam também `inventory` | reservar/cancelar muda o disponível mostrado em outras telas | invalidar só `orders` |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

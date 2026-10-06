@@ -97,6 +97,20 @@ A Phase 4 aplicou a decisão a recebimentos, ajustes e transferências por meio 
 - `lock_timeout` + `STOCK_BUSY` ficam para a Phase 7 (reservas), quando a disputa por item passa
   a ser real; até lá as transações são curtas e não há I/O externo dentro delas.
 
+### Implementação (Phase 7)
+
+- Reserva e liberação em `apps/inventory/application/commands/reservations.py`, chamadas por
+  `orders` dentro da transação do pedido. Ordem global: **pedido → depósito (`FOR SHARE`) →
+  `StockItem` (por `id`) → `StockReservation`**.
+- `lock_timeout` por transação com `SELECT set_config('lock_timeout', %s, true)` (o `SET LOCAL`
+  não aceita parâmetro); SQLSTATE `55P03` vira `STOCK_BUSY`. Configurável em
+  `STOCK_LOCK_TIMEOUT_MS`.
+- Achado dos testes de mutação: removendo o lock dos itens, o teste da última unidade **continuou
+  verde** quando a disputa era via `POST /orders` — toda submissão já trava o contador de números
+  da organização (Phase 6). Os testes passaram a disputar via `POST /orders/{id}/reserve`, que não
+  passa pelo contador; aí o lock dos itens é a única proteção e a mutação falha como deveria.
+- Reservas `ACTIVE` vencidas são liberadas pelo job de `orders` com `skip_locked`.
+
 ### Quando revisitar
 
 Se métricas mostrarem p95 de espera por lock relevante em itens específicos, ou se a reserva passar

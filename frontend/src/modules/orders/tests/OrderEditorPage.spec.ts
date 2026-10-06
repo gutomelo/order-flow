@@ -54,6 +54,7 @@ vi.mock('@/modules/customers/api/customersApi', async (importOriginal) => ({
 vi.mock('@/modules/inventory/api/inventoryApi', async (importOriginal) => ({
   ...(await importOriginal<typeof inventoryApi>()),
   listWarehouses: vi.fn(),
+  getAvailability: vi.fn(),
 }))
 
 const orders = vi.mocked(ordersApi)
@@ -92,6 +93,9 @@ describe('OrderEditorPage', () => {
     ])
     vi.mocked(customersApi.listAddresses).mockResolvedValue([buildAddress()])
     orders.quoteOrder.mockResolvedValue(buildQuote())
+    vi.mocked(inventoryApi.getAvailability).mockResolvedValue([
+      { product_id: 'p-cola', on_hand: 10, reserved: 9, available: 1 },
+    ])
     orders.getOrder.mockResolvedValue(buildOrder({ status: 'PENDING', number: 1 }))
   })
 
@@ -107,6 +111,15 @@ describe('OrderEditorPage', () => {
     expect(wrapper.find('aside[aria-labelledby="order-summary-heading"]').text()).toMatch(
       /Total estimado\s*R\$\s*7,00/,
     )
+  })
+
+  it('shows the available stock per item and warns above it without blocking', async () => {
+    const { wrapper } = await fillNewOrder()
+
+    const row = wrapper.find('tbody tr')
+    expect(row.text()).toContain('1')
+    expect(row.text()).toContain('Acima do disponível') // pediu 2, há 1
+    expect(inventoryApi.getAvailability).toHaveBeenLastCalledWith('w-1', ['p-cola'])
   })
 
   it('submits with an idempotency key and the total the seller saw', async () => {

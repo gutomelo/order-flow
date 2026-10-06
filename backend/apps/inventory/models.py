@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models import F, Q
 
 from apps.inventory.domain.movements import MovementType
+from apps.inventory.domain.reservations import HOLDING, ReservationStatus
 from shared.tenancy.models import TenantScopedModel
 
 WAREHOUSE_CODE_PATTERN = r"^[A-Z0-9-]{2,20}$"
@@ -156,3 +157,48 @@ class StockMovement(TenantScopedModel):
                 fields=["reference_type", "reference_id"], name="inventory_movement_ref_idx"
             ),
         ]
+
+
+class StockReservation(TenantScopedModel):
+    """Unidades comprometidas com uma linha de pedido (docs/domain/inventory.md).
+
+    `order_id`/`order_line_id` são referências **opacas**: inventory não conhece pedidos
+    (a dependência é sempre orders → inventory).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    stock_item = models.ForeignKey(StockItem, on_delete=models.PROTECT, related_name="reservations")
+    order_id = models.UUIDField()
+    order_line_id = models.UUIDField()
+    quantity = models.IntegerField()
+    status = models.CharField(
+        max_length=20, choices=[(s.value, s.value) for s in ReservationStatus]
+    )
+    expires_at = models.DateTimeField()
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "inventory_stock_reservation"
+        constraints = [
+            models.CheckConstraint(  # I5
+                condition=Q(quantity__gt=0), name="inventory_reservation_quantity_check"
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=[s.value for s in ReservationStatus]),
+                name="inventory_reservation_status_check",
+            ),
+            models.UniqueConstraint(  # I8
+                fields=["order_line_id", "stock_item"],
+                # Ordenado: um frozenset mudaria a ordem (e a migration) a cada execução.
+                condition=Q(status__in=sorted(s.value for s in HOLDING)),
+                name="inventory_reservation_one_holding_per_line_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["order_id"], name="inventory_resv_order_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.order_line_id}: {self.quantity} ({self.status})"

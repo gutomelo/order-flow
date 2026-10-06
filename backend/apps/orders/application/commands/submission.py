@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.orders.application import resolution
 from apps.orders.application.persistence import apply_lines, next_order_number
+from apps.orders.application.reservations import try_reserve_order
 from apps.orders.application.transitions import lock_order, transition
 from apps.orders.domain.exceptions import AddressRequired
 from apps.orders.domain.lines import (
@@ -53,15 +54,21 @@ def _finalize(
     transition(order, OrderStatus.PENDING, actor_id=actor_id)
     apply_lines(order, priced)
     order.save()
+    # Com estoque, segue para AWAITING_PAYMENT; sem estoque, fica PENDING (decisão de produto).
+    try_reserve_order(order, actor_id)
 
 
 def submit_order(
     organization_id: UUID, actor_id: UUID, order_id: UUID, *, expected_total: Decimal | None
 ) -> Order:
-    """DRAFT → PENDING. Idempotente por estado: reenviar um pedido já PENDING não tem efeito."""
+    """DRAFT → PENDING (→ AWAITING_PAYMENT se houver estoque).
+
+    Idempotente por estado: reenviar um pedido já enviado (PENDING ou AWAITING_PAYMENT) não tem
+    efeito.
+    """
     with transaction.atomic():
         order = lock_order(organization_id, order_id)
-        if order.status == OrderStatus.PENDING:
+        if order.status in (OrderStatus.PENDING, OrderStatus.AWAITING_PAYMENT):
             return order
         # Falha cedo (ex.: pedido cancelado) antes de recotar e reservar um número.
         assert_transition(OrderStatus(order.status), OrderStatus.PENDING)

@@ -286,6 +286,7 @@ export default {
       quantity: 'Quantidade',
       unitPrice: 'Preço unitário',
       lineTotal: 'Total do item',
+      available: 'Disponível',
       warehouse: 'Depósito',
       shippingAddress: 'Endereço de entrega',
       purchaseOrderNumber: 'Nº do pedido de compra do cliente',
@@ -304,6 +305,7 @@ export default {
       cancel: 'Cancelar pedido',
       discardDraft: 'Descartar rascunho',
       submitWithNewTotal: 'Enviar com o novo total ({total})',
+      reserve: 'Reservar estoque',
     },
     totals: {
       subtotal: 'Subtotal',
@@ -344,7 +346,20 @@ export default {
       quoteError: 'Há itens sem preço para este cliente. Ajuste-os para continuar.',
       quoteHint: 'Prévia com a tabela de preços do cliente. Os valores são confirmados no envio.',
       draftSaved: 'Rascunho salvo.',
-      submitted: 'Pedido {number} enviado.',
+      submitted: 'Pedido {number} enviado e estoque reservado.',
+      submittedWithoutStock:
+        'Pedido {number} enviado, mas ficou pendente: não há estoque para todos os itens.',
+      aboveAvailable: 'Acima do disponível',
+    },
+    reservation: {
+      reservedUntil:
+        'Estoque reservado até {date}. Depois disso, sem pagamento, a reserva é liberada.',
+      reserved: 'Estoque reservado até {date}.',
+      missingTitle: 'Sem reserva de estoque',
+      missingDescription:
+        'Faltou estoque no envio (ou a reserva expirou). Quando houver saldo, reserve de novo.',
+      shortage: '{sku}: pedido {requested}, disponível {available}',
+      missingUnits: 'Faltam {count}',
     },
     detail: {
       title: 'Pedido',
@@ -364,6 +379,8 @@ export default {
       title: 'Cancelar o pedido {number}?',
       discardTitle: 'Descartar este rascunho?',
       description: 'O cancelamento fica registrado no histórico do pedido e não pode ser desfeito.',
+      descriptionWithStock:
+        'O estoque reservado volta a ficar disponível. O cancelamento fica no histórico e não pode ser desfeito.',
       reason: 'Motivo',
       reasonHelp: 'Obrigatório. Ex.: cliente desistiu, pedido duplicado.',
       reasonRequired: 'Informe o motivo do cancelamento.',

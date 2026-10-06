@@ -84,3 +84,15 @@ class StockItemNotFound(DomainError):
     code = "NOT_FOUND"
     http_status = 404
     default_message = "Recurso não encontrado."
+
+
+class StockBusy(DomainError):
+    code = "STOCK_BUSY"
+    http_status = 409
+    default_message = "O estoque está sendo movimentado por outra operação. Tente de novo."
+
+
+class ReservationNotActive(DomainError):
+    code = "RESERVATION_NOT_ACTIVE"
+    http_status = 409
+    default_message = "A reserva já foi encerrada."

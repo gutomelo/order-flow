@@ -96,6 +96,12 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   o replay de idempotência, a cópia do endereço, o histórico de status e a checagem "só rascunho é
   editável" — cada um derruba ao menos um teste (o histórico, sete). No frontend, gerar uma chave de
   idempotência nova a cada tentativa faz o teste de retry falhar.
+- Phase 7: removido o lock dos itens, o teste da última unidade **seguiu verde** — a disputa via
+  `POST /orders` já era serializada pelo contador de números da organização. Reescrito para disputar
+  via `POST /orders/{id}/reserve`; aí, sem o lock, os testes de última unidade e de deadlock falham, e
+  travar os itens na ordem das linhas (em vez de por `id`) produz deadlock detectado pelo PostgreSQL.
+  Sem o `lock_timeout`, o teste de `STOCK_BUSY` falha. Lição: confirme que o teste exercita o lock que
+  diz proteger — outro lock no caminho pode mascarar a ausência dele.
 
 ## Teste de concorrência — esqueleto
 

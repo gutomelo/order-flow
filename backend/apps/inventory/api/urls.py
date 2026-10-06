@@ -3,6 +3,7 @@ from rest_framework.routers import SimpleRouter
 
 from apps.inventory.api.views import (
     AdjustmentView,
+    AvailabilityView,
     ReceiptView,
     StockItemViewSet,
     StockMovementViewSet,
@@ -19,5 +20,6 @@ urlpatterns = [
     path("inventory/receipts", ReceiptView.as_view(), name="inventory-receipts"),
     path("inventory/adjustments", AdjustmentView.as_view(), name="inventory-adjustments"),
     path("inventory/transfers", TransferView.as_view(), name="inventory-transfers"),
+    path("inventory/availability", AvailabilityView.as_view(), name="inventory-availability"),
     *router.urls,
 ]

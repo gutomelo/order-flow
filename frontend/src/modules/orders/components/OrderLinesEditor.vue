@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2 } from '@lucide/vue'
+import { Plus, Trash2, TriangleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,10 +18,12 @@ export type LineErrors = Record<string, { product?: string; quantity?: string }>
 
 /** Itens do rascunho: produto, quantidade e o preço que o backend cotou para cada linha. */
 const lines = defineModel<EditorLine[]>('lines', { required: true })
-const { errors, quote } = defineProps<{
+const { errors, quote, availability } = defineProps<{
   errors: LineErrors
   /** Cotação por produto (prévia do backend); ausente enquanto não há cotação válida. */
   quote: Map<string, QuoteLine>
+  /** Disponível por produto no depósito escolhido (informativo; quem decide é a reserva). */
+  availability: Map<string, number>
 }>()
 
 const { t } = useI18n()
@@ -40,12 +42,18 @@ const otherProductIds = (line: EditorLine) =>
     .map((other) => other.product?.id ?? '')
 
 const quoted = (line: EditorLine) => (line.product ? quote.get(line.product.id) : undefined)
+const available = (line: EditorLine) =>
+  line.product ? availability.get(line.product.id) : undefined
+const aboveAvailable = (line: EditorLine) => {
+  const value = available(line)
+  return value !== undefined && /^\d+$/.test(line.quantity.trim()) && Number(line.quantity) > value
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
     <div class="overflow-x-auto">
-      <table class="w-full min-w-[680px] text-sm">
+      <table class="w-full min-w-[780px] text-sm">
         <caption class="sr-only">
           {{
             t('orders.editor.linesCaption')
@@ -56,6 +64,9 @@ const quoted = (line: EditorLine) => (line.product ? quote.get(line.product.id) 
             <th scope="col" class="py-2 pr-3 font-medium">{{ t('orders.fields.product') }}</th>
             <th scope="col" class="w-28 py-2 pr-3 font-medium">
               {{ t('orders.fields.quantity') }}
+            </th>
+            <th scope="col" class="w-36 py-2 pr-3 text-right font-medium">
+              {{ t('orders.fields.available') }}
             </th>
             <th scope="col" class="w-32 py-2 pr-3 text-right font-medium">
               {{ t('orders.fields.unitPrice') }}
@@ -91,6 +102,16 @@ const quoted = (line: EditorLine) => (line.product ? quote.get(line.product.id) 
                 :label="t('orders.editor.lineQuantity', { n: index + 1 })"
                 :error="errors[line.key]?.quantity"
               />
+            </td>
+            <td class="py-2 pr-3 pt-4 text-right tabular-nums">
+              <span>{{ available(line) ?? '—' }}</span>
+              <span
+                v-if="aboveAvailable(line)"
+                class="mt-1 flex items-center justify-end gap-1 text-xs text-warning"
+              >
+                <TriangleAlert class="size-3.5" aria-hidden="true" />
+                {{ t('orders.editor.aboveAvailable') }}
+              </span>
             </td>
             <td class="py-2 pr-3 pt-4 text-right tabular-nums">
               {{ quoted(line) ? formatMoney(quoted(line)?.unit_price) : '—' }}

@@ -148,3 +148,15 @@ class TransferCreateSerializer(serializers.Serializer[dict[str, Any]]):
     to_warehouse_id = serializers.UUIDField()
     quantity = serializers.IntegerField(min_value=1, max_value=1_000_000)
     reason = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+
+
+class AvailabilityQuerySerializer(serializers.Serializer[dict[str, Any]]):
+    warehouse = serializers.UUIDField()
+    products = serializers.ListField(child=serializers.UUIDField(), min_length=1, max_length=200)
+
+
+class AvailabilitySerializer(serializers.Serializer[dict[str, Any]]):
+    product_id = serializers.UUIDField()
+    on_hand = serializers.IntegerField()
+    reserved = serializers.IntegerField()
+    available = serializers.IntegerField()

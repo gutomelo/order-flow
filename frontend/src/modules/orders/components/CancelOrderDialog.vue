@@ -14,7 +14,16 @@ import { ApiError } from '@/services/http/apiError'
 
 /** Cancelamento com motivo obrigatório (registrado no histórico do pedido). */
 const open = defineModel<boolean>('open', { required: true })
-const { order, title } = defineProps<{ order: Order; title: string }>()
+const {
+  order,
+  title,
+  releasesStock = false,
+} = defineProps<{
+  order: Order
+  title: string
+  /** Pedido com reserva: o estoque volta a ficar disponível. */
+  releasesStock?: boolean
+}>()
 
 const { t } = useI18n()
 const toasts = useToastStore()
@@ -52,7 +61,13 @@ async function onSubmit() {
 </script>
 
 <template>
-  <BaseDialog v-model:open="open" :title="title" :description="t('orders.cancel.description')">
+  <BaseDialog
+    v-model:open="open"
+    :title="title"
+    :description="
+      releasesStock ? t('orders.cancel.descriptionWithStock') : t('orders.cancel.description')
+    "
+  >
     <form id="cancel-order-form" class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
       <FormAlert :message="formError" />
       <div id="cancel-reason">

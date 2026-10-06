@@ -1,7 +1,9 @@
 # Domínio: Inventory (Estoque)
 
 > Fonte da verdade das regras de estoque. Phase 4 implementou depósitos, saldo, movimentações,
-> recebimentos, ajustes e transferências; reservas chegam na Phase 7.
+> recebimentos, ajustes e transferências; Phase 7, reservas, liberação, expiração (via `orders`),
+> disponibilidade para a tela e reconciliação. `CONFIRMED`/`CONSUMED` chegam com pagamento (8) e
+> envio (9).
 > Decisão de concorrência: [ADR-008](../adr/008-stock-concurrency-control.md).
 
 ## Responsabilidade
@@ -161,7 +163,12 @@ não entram em deadlock.
 | `RELEASED` | Liberada por cancelamento | — |
 | `EXPIRED` | Liberada por expiração | — |
 
-- Validade padrão: `STOCK_RESERVATION_TTL` (configurável; padrão 30 minutos).
+- Validade padrão: `STOCK_RESERVATION_TTL_HOURS` (configurável; padrão **48 horas**, prazo de
+  pagamento B2B).
+- Reserva é **tudo-ou-nada** por pedido; `INSUFFICIENT_STOCK` traz `details.lines` com cada falta
+  (`product_id`, `requested`, `available`). Produto sem `StockItem` no depósito conta como zero.
+- Referências ao pedido (`order_id`, `order_line_id`) são UUIDs opacos, sem FK.
+- Movimentos `RESERVATION`/`RELEASE` usam `reference_type = "ORDER"`, `reference_id = order_id`.
 - A expiração é disparada pelo módulo `orders` (`ExpireUnpaidOrder`, Celery Beat), que chama
   `inventory.application.ReleaseReservation(reason=EXPIRED)`. Assim a dependência é sempre
   `orders → inventory`, nunca o inverso.
@@ -180,8 +187,9 @@ não entram em deadlock.
 | I8 | No máximo uma reserva não-terminal por (`order_line_id`, `stock_item_id`) | UNIQUE parcial |
 | I9 | `ADJUSTMENT` não pode deixar `on_hand < reserved` | domínio + I3 |
 
-I6 e I7 não são expressáveis como constraint simples; um job periódico de reconciliação compara os
-valores e registra alerta em caso de divergência (nunca corrige silenciosamente).
+I6 e I7 não são expressáveis como constraint simples; o job `maintenance.reconcile_stock`
+(diário, `application/reconciliation.py`) compara os valores e registra
+`inventory.reconciliation.divergence` em nível `error` (nunca corrige silenciosamente).
 
 ## Concorrência
 
@@ -194,7 +202,8 @@ Resumo do [ADR-008](../adr/008-stock-concurrency-control.md):
    `CancelOrder`, `ExpireUnpaidOrder` e `ShipOrder`).
 4. Verificação de disponibilidade **após** obter o lock (nunca antes).
 5. Atualizações com `F()` expressions; constraints do banco como última defesa.
-6. `lock_timeout` curto → `STOCK_BUSY` (409, re-tentável).
+6. `lock_timeout` curto (`STOCK_LOCK_TIMEOUT_MS`, padrão 3 s, via `set_config('lock_timeout', …,
+   true)`) → `STOCK_BUSY` (409, re-tentável). No envio do pedido vira "fica PENDING".
 7. Nada de I/O externo (gateway, e-mail, HTTP) dentro de transação que segura lock de estoque.
 8. Jobs em lote (expiração, reconciliação) usam `select_for_update(skip_locked=True)`.
 
@@ -202,10 +211,11 @@ Resumo do [ADR-008](../adr/008-stock-concurrency-control.md):
 
 ```text
 available = 1
-Cliente A: PlaceOrder(qty=1)  ┐ simultâneos
-Cliente B: PlaceOrder(qty=1)  ┘
-Resultado: exatamente um 201; o outro 409 INSUFFICIENT_STOCK
-           reserved = 1, uma reserva ACTIVE, um movimento RESERVATION
+Pedido A: reservar (qty=1)  ┐ simultâneos
+Pedido B: reservar (qty=1)  ┘
+Resultado: exatamente um AWAITING_PAYMENT; o outro 409 INSUFFICIENT_STOCK
+           (no envio, o outro fica PENDING) — reserved = 1, uma reserva ACTIVE,
+           um movimento RESERVATION
 ```
 
 ## Casos de uso
@@ -222,6 +232,9 @@ Resultado: exatamente um 201; o outro 409 INSUFFICIENT_STOCK
 | Depósitos | `GET/POST /api/v1/inventory/warehouses`, `PATCH .../{id}`, `.../activate`, `.../deactivate` | `inventory:read` / `inventory:update` | — |
 | Ponto de reposição | `PATCH /api/v1/inventory/stock-items/{id}` (`reorder_point`) | `inventory:update` | — |
 | `ReturnToStock` | orders (`CompleteReturn`) | — (interno) | `StockReturned` |
+
+Disponibilidade para a tela de pedido: `GET /api/v1/inventory/availability?warehouse=&products=a,b`
+(`inventory:read`; leitura sem lock, informativa — produto sem item vem com zero).
 
 Leituras: `GET /api/v1/inventory/stock-items` (filtros por produto, depósito, busca por SKU/nome,
 `low_stock=true` ⇒ `available <= reorder_point`), `GET /api/v1/inventory/movements` (paginado, filtros

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Pencil, Send, XCircle } from '@lucide/vue'
+import { ArrowLeft, PackageCheck, Pencil, Send, TriangleAlert, XCircle } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -13,7 +13,14 @@ import { formatPostalCode } from '@/modules/customers/addresses'
 import CancelOrderDialog from '@/modules/orders/components/CancelOrderDialog.vue'
 import OrderStatusBadge from '@/modules/orders/components/OrderStatusBadge.vue'
 import OrderTotals from '@/modules/orders/components/OrderTotals.vue'
-import { useOrder, useQuote, useSubmitOrder } from '@/modules/orders/composables/useOrders'
+import { useAvailability } from '@/modules/inventory/composables/useInventory'
+import {
+  useOrder,
+  useQuote,
+  useReserveOrder,
+  useSubmitOrder,
+} from '@/modules/orders/composables/useOrders'
+import { useSubmittedNotice } from '@/modules/orders/composables/useSubmittedNotice'
 import { formatOrderNumber } from '@/modules/orders/format'
 import type { OrderLine } from '@/modules/orders/types'
 import { ApiError } from '@/services/http/apiError'
@@ -26,18 +33,20 @@ const { t } = useI18n()
 const session = useSessionStore()
 const toasts = useToastStore()
 const errorMessage = useApiErrorMessage()
+const notifySubmitted = useSubmittedNotice()
 
 const { data: order, isPending, error, refetch } = useOrder(() => id)
 const notFound = computed(() => error.value instanceof ApiError && error.value.status === 404)
 
 const isDraft = computed(() => order.value?.status === 'DRAFT')
 const canEdit = computed(() => isDraft.value && session.can('orders:create'))
-// Phase 6: cancela-se rascunho e pendente; estados com reserva/pagamento chegam nas próximas fases.
+// Estados pagos (cancelamento com refund) chegam com pagamentos (Phase 8).
+const CANCELLABLE = new Set(['DRAFT', 'PENDING', 'AWAITING_PAYMENT'])
 const canCancel = computed(
-  () =>
-    session.can('orders:cancel') &&
-    (order.value?.status === 'DRAFT' || order.value?.status === 'PENDING'),
+  () => session.can('orders:cancel') && CANCELLABLE.has(order.value?.status ?? ''),
 )
+// Enviado, mas sem reserva (faltou estoque ou a reserva expirou).
+const withoutReservation = computed(() => order.value?.status === 'PENDING')
 const title = computed(() =>
   order.value
     ? (formatOrderNumber(order.value.number) ?? t('orders.draftTitle'))
@@ -76,7 +85,7 @@ async function onSubmit(expectedTotal: string) {
   try {
     const submitted = await submit.mutateAsync({ id, expectedTotal })
     changedTotal.value = null
-    toasts.success(t('orders.editor.submitted', { number: formatOrderNumber(submitted.number) }))
+    notifySubmitted(submitted)
   } catch (cause) {
     if (cause instanceof ApiError && cause.code === 'PRICES_CHANGED') {
       changedTotal.value = String(cause.details.actual)
@@ -85,6 +94,42 @@ async function onSubmit(expectedTotal: string) {
       })
       void draftQuote.refetch()
     } else submitError.value = errorMessage(cause)
+  }
+}
+
+// Disponível por item para pedidos sem reserva: mostra o que falta antes de tentar de novo.
+const stock = useAvailability(
+  () => (withoutReservation.value ? (order.value?.warehouse?.id ?? '') : ''),
+  () => order.value?.lines.map((line) => line.product_id) ?? [],
+)
+const availableOf = (line: OrderLine) =>
+  stock.data.value?.find((level) => level.product_id === line.product_id)?.available
+
+const reserve = useReserveOrder()
+const reserveError = ref<string | null>(null)
+const shortages = ref<{ sku: string; requested: number; available: number }[]>([])
+async function onReserve() {
+  reserveError.value = null
+  shortages.value = []
+  try {
+    const reserved = await reserve.mutateAsync(id)
+    toasts.success(
+      t('orders.reservation.reserved', { date: formatDateTime(reserved.payment_due_at ?? '') }),
+    )
+  } catch (cause) {
+    reserveError.value = errorMessage(cause)
+    if (cause instanceof ApiError && Array.isArray(cause.details.lines)) {
+      const lines = cause.details.lines as {
+        product_id: string
+        requested: number
+        available: number
+      }[]
+      shortages.value = lines.map((short) => ({
+        sku: order.value?.lines.find((l) => l.product_id === short.product_id)?.sku ?? '—',
+        requested: short.requested,
+        available: short.available,
+      }))
+    }
   }
 }
 
@@ -155,6 +200,45 @@ const cancelOpen = ref(false)
         </div>
       </header>
 
+      <section
+        v-if="order.status === 'AWAITING_PAYMENT' && order.payment_due_at"
+        class="mb-6 flex items-start gap-3 rounded-lg border border-border bg-surface p-4 text-sm"
+      >
+        <PackageCheck class="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+        <p>
+          {{
+            t('orders.reservation.reservedUntil', { date: formatDateTime(order.payment_due_at) })
+          }}
+        </p>
+      </section>
+
+      <section
+        v-if="withoutReservation"
+        aria-labelledby="reservation-heading"
+        class="mb-6 flex flex-col gap-3 rounded-lg border border-warning/50 bg-surface p-4 text-sm"
+      >
+        <div class="flex items-start gap-3">
+          <TriangleAlert class="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <div>
+            <h2 id="reservation-heading" class="font-semibold">
+              {{ t('orders.reservation.missingTitle') }}
+            </h2>
+            <p class="text-text-secondary">{{ t('orders.reservation.missingDescription') }}</p>
+          </div>
+        </div>
+        <FormAlert :message="reserveError" />
+        <ul v-if="shortages.length" class="ml-7 list-disc text-sm">
+          <li v-for="short in shortages" :key="short.sku">
+            {{ t('orders.reservation.shortage', short) }}
+          </li>
+        </ul>
+        <div v-if="session.can('orders:create')" class="ml-7">
+          <BaseButton :loading="reserve.isPending.value" @click="onReserve">
+            {{ t('orders.actions.reserve') }}
+          </BaseButton>
+        </div>
+      </section>
+
       <div v-if="submitError" class="mb-6 flex flex-col gap-3">
         <FormAlert :message="submitError" />
         <div v-if="changedTotal">
@@ -191,6 +275,13 @@ const cancelOpen = ref(false)
                     <th scope="col" class="py-2 pr-3 text-right font-medium">
                       {{ t('orders.fields.quantity') }}
                     </th>
+                    <th
+                      v-if="withoutReservation"
+                      scope="col"
+                      class="py-2 pr-3 text-right font-medium"
+                    >
+                      {{ t('orders.fields.available') }}
+                    </th>
                     <th scope="col" class="py-2 pr-3 text-right font-medium">
                       {{ t('orders.fields.unitPrice') }}
                     </th>
@@ -212,6 +303,20 @@ const cancelOpen = ref(false)
                       </span>
                     </td>
                     <td class="py-2 pr-3 text-right tabular-nums">{{ line.quantity }}</td>
+                    <td v-if="withoutReservation" class="py-2 pr-3 text-right tabular-nums">
+                      <span>{{ availableOf(line) ?? '—' }}</span>
+                      <span
+                        v-if="(availableOf(line) ?? Infinity) < line.quantity"
+                        class="mt-1 flex items-center justify-end gap-1 text-xs text-warning"
+                      >
+                        <TriangleAlert class="size-3.5" aria-hidden="true" />
+                        {{
+                          t('orders.reservation.missingUnits', {
+                            count: line.quantity - (availableOf(line) ?? 0),
+                          })
+                        }}
+                      </span>
+                    </td>
                     <td class="py-2 pr-3 text-right tabular-nums">
                       {{ formatMoney(shown(line).unit_price) }}
                     </td>
@@ -361,6 +466,7 @@ const cancelOpen = ref(false)
         v-if="canCancel"
         v-model:open="cancelOpen"
         :order="order"
+        :releases-stock="order.status === 'AWAITING_PAYMENT'"
         :title="
           isDraft
             ? t('orders.cancel.discardTitle')

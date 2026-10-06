@@ -66,7 +66,10 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Quantidade física | `on_hand` | Unidades fisicamente no depósito |
 | Quantidade reservada | `reserved` | Unidades comprometidas com pedidos ainda não enviados |
 | Quantidade disponível | `available` | `on_hand - reserved`; o que pode ser vendido |
-| Reserva de estoque | `StockReservation` | Compromisso de unidades para uma linha de pedido, com validade |
+| Reserva de estoque | `StockReservation` | Compromisso de unidades para uma linha de pedido, com validade (`ACTIVE` → `CONFIRMED`/`RELEASED`/`EXPIRED` → `CONSUMED`) |
+| Validade da reserva | `payment_due_at` / `expires_at` | Até quando o estoque fica seguro aguardando pagamento (padrão 48 h) |
+| Estoque ocupado | `STOCK_BUSY` | Lock de estoque disputado por tempo demais; tentar de novo |
+| Reconciliação | `reconcile_stock` | Job que compara saldos com reservas e movimentos (I6, I7) e alerta divergências |
 | Movimentação de estoque | `StockMovement` | Registro imutável de toda alteração de saldo |
 | Ponto de reposição | `reorder_point` | Limite abaixo do qual o item é "estoque baixo" |
 | Ajuste de inventário | `ADJUSTMENT` | Correção manual de `on_hand` com motivo obrigatório |

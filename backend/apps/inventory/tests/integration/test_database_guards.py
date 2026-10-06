@@ -1,10 +1,13 @@
 """O banco protege o estoque mesmo contra código que contorne o domínio (ADR-004)."""
 
+from uuid import UUID, uuid4
+
 import pytest
 from django.db import DatabaseError, IntegrityError, transaction
+from django.utils import timezone
 
 from apps.inventory.domain.movements import MovementType
-from apps.inventory.models import StockItem, StockMovement
+from apps.inventory.models import StockItem, StockMovement, StockReservation
 from apps.inventory.tests.factories import make_stock_item
 
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
@@ -76,3 +79,28 @@ def test_movement_must_change_something() -> None:
             on_hand_after=1,
             reserved_after=0,
         )
+
+
+def _reservation(item: StockItem, line_id: UUID, **kwargs: object) -> None:
+    StockReservation.objects.create(
+        organization=item.organization,
+        stock_item=item,
+        order_id=uuid4(),
+        order_line_id=line_id,
+        expires_at=timezone.now(),
+        **{"quantity": 1, "status": "ACTIVE", **kwargs},
+    )
+
+
+def test_one_holding_reservation_per_order_line_and_item() -> None:  # I8
+    item, line = make_stock_item(on_hand=5), uuid4()
+    _reservation(item, line)
+    _reservation(item, line, status="RELEASED")  # encerradas não contam
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _reservation(item, line, status="CONFIRMED")
+
+
+def test_reservation_quantity_must_be_positive() -> None:  # I5
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _reservation(make_stock_item(on_hand=5), uuid4(), quantity=0)

@@ -38,6 +38,7 @@ export function buildOrder(overrides: Partial<Order> = {}): Order {
     currency: 'BRL',
     lines_count: 1,
     submitted_at: null,
+    payment_due_at: null,
     created_at: '2026-10-05T12:00:00Z',
     updated_at: '2026-10-05T12:00:00Z',
     warehouse: { id: 'w-1', code: 'CD-SP', name: 'CD São Paulo' },

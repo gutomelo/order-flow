@@ -9,6 +9,24 @@ export const inventoryKeys = {
   warehouses: () => [...inventoryKeys.all, 'warehouses'] as const,
   stock: (filters: StockFilters) => [...inventoryKeys.all, 'stock', filters] as const,
   movements: (filters: MovementFilters) => [...inventoryKeys.all, 'movements', filters] as const,
+  availability: (warehouseId: string, productIds: string[]) =>
+    [...inventoryKeys.all, 'availability', warehouseId, productIds] as const,
+}
+
+/** Disponível por produto no depósito — só informativo (pode mudar até a reserva). */
+export function useAvailability(
+  warehouseId: MaybeRefOrGetter<string>,
+  productIds: MaybeRefOrGetter<string[]>,
+) {
+  // Ordenado: a mesma seleção de produtos reaproveita o cache em qualquer ordem de linhas.
+  const ids = computed(() => [...new Set(toValue(productIds))].sort())
+  return useQuery({
+    queryKey: computed(() => inventoryKeys.availability(toValue(warehouseId), ids.value)),
+    queryFn: () => inventoryApi.getAvailability(toValue(warehouseId), ids.value),
+    enabled: computed(() => Boolean(toValue(warehouseId)) && ids.value.length > 0),
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  })
 }
 
 export function useWarehouses() {

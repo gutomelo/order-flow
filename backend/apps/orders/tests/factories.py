@@ -11,8 +11,8 @@ from apps.customers.tests.factories import make_address, make_customer
 from apps.identity.domain.permissions import Role
 from apps.identity.models import User
 from apps.identity.tests.factories import authenticated_client, make_user
-from apps.inventory.models import Warehouse
-from apps.inventory.tests.factories import make_warehouse
+from apps.inventory.models import StockItem, StockMovement, Warehouse
+from apps.inventory.tests.factories import make_stock_item, make_warehouse
 from apps.pricing.models import PriceList
 from apps.pricing.tests.factories import make_price_list, set_price
 
@@ -59,6 +59,20 @@ class Scenario:
             format="json",
             HTTP_IDEMPOTENCY_KEY=str(key or uuid4()),
         )
+
+    def stock(self, product: Product, on_hand: int) -> StockItem:
+        """Saldo com o movimento correspondente (a reconciliação I7 continua coerente)."""
+        item = make_stock_item(warehouse=self.warehouse, product=product, on_hand=on_hand)
+        StockMovement.objects.create(
+            organization_id=item.organization_id,
+            stock_item=item,
+            type="PURCHASE",
+            on_hand_delta=on_hand,
+            reserved_delta=0,
+            on_hand_after=on_hand,
+            reserved_after=0,
+        )
+        return item
 
     def draft(self, **overrides: Any) -> Any:
         return self.client.post(f"{ORDERS}/drafts", self.payload(**overrides), format="json")

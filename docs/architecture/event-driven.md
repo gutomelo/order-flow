@@ -117,8 +117,8 @@ está `CANCELLED` aguardando `PaymentRefunded`).
 com consequência de negócio (ex.: `PaymentRefunded` → `orders`), o ADR-011 propõe o Outbox.
 A API `publish()` é a mesma nos dois modos. Decisão final antes da Phase 8.
 
-## Estado atual (Phase 6)
+## Estado atual (Phase 7)
 
-`shared/events` ainda **não existe**: nenhum evento tem consumidor (reserva síncrona na Phase 7,
-notificações na 10, auditoria na 12). O barramento entra junto com o primeiro consumidor real; até
+`shared/events` ainda **não existe**: nenhum evento tem consumidor (a reserva é chamada de forma
+síncrona por `orders`; notificações chegam na Phase 10 e auditoria na 12). O barramento entra junto com o primeiro consumidor real; até
 lá, `OrderStatusHistory` registra transacionalmente toda transição de pedido.

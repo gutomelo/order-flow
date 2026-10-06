@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { CircleAlert, CircleCheck, X } from '@lucide/vue'
+import { CircleAlert, CircleCheck, TriangleAlert, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 
-import { useToastStore } from '@/app/stores/toasts'
+import { type Toast, useToastStore } from '@/app/stores/toasts'
 
 const { t } = useI18n()
 const toasts = useToastStore()
+
+// Tom nunca só por cor: cada um tem o seu ícone.
+const appearance: Record<Toast['tone'], { icon: typeof CircleCheck; color: string }> = {
+  success: { icon: CircleCheck, color: 'text-success' },
+  warning: { icon: TriangleAlert, color: 'text-warning' },
+  error: { icon: CircleAlert, color: 'text-danger' },
+}
 </script>
 
 <template>
@@ -21,9 +28,9 @@ const toasts = useToastStore()
       class="pointer-events-auto flex items-start gap-3 rounded-lg border border-border bg-surface p-3 text-sm text-text-primary shadow-lg"
     >
       <component
-        :is="toast.tone === 'success' ? CircleCheck : CircleAlert"
+        :is="appearance[toast.tone].icon"
         class="mt-0.5 size-4 shrink-0"
-        :class="toast.tone === 'success' ? 'text-success' : 'text-danger'"
+        :class="appearance[toast.tone].color"
         aria-hidden="true"
       />
       <p class="flex-1">{{ toast.message }}</p>

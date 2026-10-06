@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
+import { inventoryKeys } from '@/modules/inventory/composables/useInventory'
 import * as api from '@/modules/orders/api/ordersApi'
 import type { DraftInput, LineInput, OrderFilters } from '@/modules/orders/types'
 
@@ -45,12 +46,19 @@ export function useQuote(
   })
 }
 
-/** Invalida `orders` ao terminar — inclusive no erro (409 = tela desatualizada). */
+/**
+ * Invalida `orders` e o estoque ao terminar — inclusive no erro (409 = tela desatualizada).
+ * Enviar, reservar e cancelar mudam o disponível (reservas), então o estoque também recarrega.
+ */
 function useOrdersMutation<Input, Output>(mutationFn: (input: Input) => Promise<Output>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: Input) => mutationFn(input),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
+      ]),
   })
 }
 
@@ -69,6 +77,8 @@ export const usePlaceOrder = () =>
     (input: { data: DraftInput & { expected_total: string | null }; key: string }) =>
       api.placeOrder(input.data, input.key),
   )
+
+export const useReserveOrder = () => useOrdersMutation((id: string) => api.reserveOrder(id))
 
 export const useCancelOrder = () =>
   useOrdersMutation((input: { id: string; reason: string }) =>

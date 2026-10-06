@@ -51,3 +51,8 @@ def test_submitted_orders_keep_number_and_snapshot(order: Order) -> None:
         Order.objects.filter(id=order.id).update(number=None)
     with pytest.raises(IntegrityError), transaction.atomic():
         Order.objects.filter(id=order.id).update(shipping_snapshot=None)
+
+
+def test_awaiting_payment_always_has_a_due_date(order: Order) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Order.objects.filter(id=order.id).update(status="AWAITING_PAYMENT", payment_due_at=None)

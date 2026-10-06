@@ -3,13 +3,13 @@ import { ref } from 'vue'
 
 export interface Toast {
   id: number
-  tone: 'success' | 'error'
+  tone: 'success' | 'warning' | 'error'
   message: string
 }
 
 const DISMISS_AFTER_MS = 5_000
 
-/** Feedback de sucesso/erro de operações (client state). */
+/** Feedback de operações (client state). `warning`: concluiu, mas com ressalva. */
 export const useToastStore = defineStore('toasts', () => {
   const toasts = ref<Toast[]>([])
   let nextId = 1
@@ -28,6 +28,7 @@ export const useToastStore = defineStore('toasts', () => {
     toasts,
     dismiss,
     success: (message: string) => push('success', message),
+    warning: (message: string) => push('warning', message),
     error: (message: string) => push('error', message),
   }
 })
