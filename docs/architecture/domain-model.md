@@ -54,9 +54,9 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | `customers` | `CustomerSegment`, `Customer`, `CustomerAddress`, `CustomerContact` | `selectors.get_active_customer` |
 | `suppliers` | `Supplier` | `selectors.get_active_supplier` |
 | `catalog` | `Product`, `Category` | `selectors.get_sellable_products`, `selectors.descendant_ids` |
-| `pricing` | `PriceList`, regras de desconto | `price_lines(customer, lines)` |
+| `pricing` | `PriceList`, `PriceListItem` (descontos: fase futura) | `selectors.quote_prices(org, segment, products)` |
 | `inventory` | `Warehouse`, `StockItem`, `StockReservation`, `StockMovement` | `ReserveStock`, `ReleaseReservation`, `ConfirmReservation`, `ConsumeReservation` |
-| `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderReturn` | use cases do pedido |
+| `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderNumberSequence` (`OrderReturn`: Phase 9) | use cases do pedido |
 | `payments` | `Payment`, `Refund` | `ChargePayment`, `RequestRefund` |
 | `shipping` | `Shipment` | `CreateShipment` |
 | `notifications` | `NotificationLog` | — (reage a eventos) |

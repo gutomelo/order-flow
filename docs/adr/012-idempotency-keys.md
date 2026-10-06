@@ -68,6 +68,19 @@ pelos módulos.
   no cliente HTTP do frontend).
 - Respostas armazenadas não devem conter dados sensíveis.
 
+### Implementação (Phase 6)
+
+- Componente em `shared/idempotency` (app Django com a tabela `idempotency_record`) e o decorator
+  `@idempotent("orders.place")` nas views. O escopo é (usuário, operação, chave).
+- Operações de **uma** transação (como `POST /orders`): o registro nasce e conclui no mesmo commit.
+  Uma segunda requisição com a mesma chave **espera** no índice único até a primeira terminar e
+  recebe a resposta gravada (header `Idempotent-Replayed: true`). `IN_PROGRESS` visível para outros
+  só existirá em operações de várias transações (pagamento, Phase 8).
+- Só respostas 2xx são gravadas: erro de domínio desfaz tudo e a chave pode ser reenviada.
+- Limpeza diária via Celery Beat (`maintenance.purge_expired_idempotency_records`).
+- Frontend: a chave é por **conteúdo** (`useIdempotencyKey`): repetir o mesmo pedido reaproveita a
+  chave; mudar o conteúdo gera outra.
+
 ### Quando revisitar
 
 Se outras operações precisarem de idempotência (ex.: ajustes de estoque via integração) ou se o

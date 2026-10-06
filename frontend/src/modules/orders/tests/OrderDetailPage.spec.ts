@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/App.vue'
 import * as ordersApi from '@/modules/orders/api/ordersApi'
-import { buildOrder } from '@/modules/orders/tests/fixtures'
+import { buildOrder, buildQuote } from '@/modules/orders/tests/fixtures'
 import { ApiError } from '@/services/http/apiError'
 import { buildCurrentUser, mountWithPlugins } from '@/testing/mountWithPlugins'
 
@@ -12,6 +12,7 @@ vi.mock('@/modules/orders/api/ordersApi', async (importOriginal) => ({
   getOrder: vi.fn(),
   submitOrder: vi.fn(),
   cancelOrder: vi.fn(),
+  quoteOrder: vi.fn(),
 }))
 
 const api = vi.mocked(ordersApi)
@@ -31,6 +32,31 @@ describe('OrderDetailPage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     api.getOrder.mockResolvedValue(buildOrder())
+    api.quoteOrder.mockResolvedValue(buildQuote())
+  })
+
+  it('shows the current price of a draft and submits the total on screen', async () => {
+    // Rascunho salvo a R$ 3,50; a tabela agora diz R$ 3,90.
+    api.quoteOrder.mockResolvedValue(
+      buildQuote({
+        lines: buildQuote().lines.map((line) => ({
+          ...line,
+          unit_price: '3.90',
+          line_total: '7.80',
+        })),
+        subtotal: '7.80',
+        total: '7.80',
+      }),
+    )
+    api.submitOrder.mockResolvedValue(buildOrder({ status: 'PENDING', number: 1 }))
+    const { wrapper } = await mountWithPlugins(App, { route: '/orders/o-1', user: seller })
+    await flushPromises()
+
+    expect(wrapper.find('tbody').text()).toMatch(/R\$\s*3,90.*R\$\s*7,80/)
+    await button(wrapper, 'Enviar pedido').trigger('click')
+    await flushPromises()
+
+    expect(api.submitOrder).toHaveBeenCalledWith('o-1', '7.80')
   })
 
   it('shows a submitted order with number, status, frozen lines and history', async () => {

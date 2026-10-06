@@ -158,6 +158,9 @@ POST /api/v1/orders
 - `transaction.atomic()` no use case. `ATOMIC_REQUESTS` **desligado** (transações explícitas e curtas).
 - Nada de I/O externo dentro de transação com locks.
 - Efeitos pós-commit via `transaction.on_commit` (ou outbox, ADR-011).
+- Dinheiro: `shared/domain/money.py` (`Money`, `quantize` com `ROUND_HALF_UP`); `float` é recusado.
+- Idempotência de `POST` sensíveis: `shared/idempotency` (decorator na view, registro na mesma
+  transação do efeito, ADR-012).
 - Saldo de estoque só muda pelo ledger de `inventory` (`application/ledger.py`), que fixa a ordem
   de locks e grava saldo e `StockMovement` na mesma transação (ADR-008).
 

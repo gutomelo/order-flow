@@ -97,6 +97,8 @@ services:
 
   celery-worker:
     <<: *backend-base
+    # Queda transitória do broker derruba o processo; o Compose o traz de volta.
+    restart: unless-stopped
     command: celery -A config worker -l INFO -Q default,notifications,integrations,maintenance
     environment:
       <<: *backend-env
@@ -110,6 +112,8 @@ services:
 
   celery-beat:
     <<: *backend-base
+    # Queda transitória do broker derruba o processo; o Compose o traz de volta.
+    restart: unless-stopped
     # Arquivo de schedule fora do volume do código (o usuário do container não escreve em /app).
     command: celery -A config beat -l INFO --schedule /tmp/celerybeat-schedule
     environment:

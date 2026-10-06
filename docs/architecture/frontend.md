@@ -210,6 +210,18 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Ações com texto visível + contexto (`Tornar cobrança` + `: Filial Campinas`) usam texto visível `aria-hidden` e rótulo completo em `sr-only` | o espaço em branco do template gerava "Tornar cobrança : Filial" e o nome acessível precisa conter o texto visível (WCAG 2.5.3) | `aria-label` montado por concatenação |
 | Preenchimento por CEP (ViaCEP) **não** implementado | seria a primeira integração externa síncrona do cadastro; registrado em `customers.md` | — |
 
+### Decisões de implementação (Phase 6)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Frontend **não soma dinheiro**: preços e totais vêm de `POST /orders/quote`, calculado pelo mesmo código do pedido | duas implementações de arredondamento divergem; o total mostrado precisa ser o total gravado | somar no cliente com `number` (float) |
+| Envio confirma o total visto (`expected_total`); `PRICES_CHANGED` mostra o novo total e pede confirmação | tabela alterada entre a prévia e o envio | aceitar o preço novo em silêncio |
+| Detalhe de rascunho mostra a **cotação atual**, não a estimativa salva | o E2E mostrou tabela com R$ 2,90 e alerta com o novo total ao mesmo tempo | recotar só no envio |
+| `useIdempotencyKey`: chave por conteúdo | retry após timeout precisa reaproveitar a chave; outro conteúdo é outra intenção | chave nova por clique (duplica pedido após timeout) |
+| `SearchCombobox` genérico (Reka UI) usado por `ProductPicker` e `CustomerPicker` | segundo seletor com busca no servidor duplicaria o combobox | copiar o componente |
+| Valores monetários como string decimal; `formatMoney`/`parseMoneyInput` em `utils/money.ts` ("3,50" → "3.50") | `float` e vírgula decimal pt-BR | `Number()` no input |
+| `key` de diálogo **não** depende de dados recarregados | a recarga após criar uma tabela de preço remontava o diálogo aberto (bug achado no E2E; teste de regressão) | — |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

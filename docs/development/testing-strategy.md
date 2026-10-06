@@ -92,6 +92,10 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   de endereço), os testes de concorrência falham; sem a promoção de papel e sem o filtro por cliente
   nos recursos aninhados (IDOR), os testes de API falham. No frontend, sem a invalidação em
   `onSettled` e sem o foco no primeiro campo inválido, os testes falham.
+- Phase 6: removidos o lock do pedido, o lock do contador de números, a checagem do total esperado,
+  o replay de idempotência, a cópia do endereço, o histórico de status e a checagem "só rascunho é
+  editável" — cada um derruba ao menos um teste (o histórico, sete). No frontend, gerar uma chave de
+  idempotência nova a cada tentativa faz o teste de retry falhar.
 
 ## Teste de concorrência — esqueleto
 

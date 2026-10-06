@@ -260,7 +260,7 @@ export default {
     description: 'Pedidos de venda dos clientes, do rascunho ao envio.',
     draftTitle: 'Rascunho de pedido',
     noNumber: 'Sem número',
-    poShort: 'PC {po}',
+    poShort: 'Ped. compra: {po}',
     submittedAt: 'Enviado em {date}',
     createdAt: 'Criado em {date}',
     backToList: 'Voltar para pedidos',

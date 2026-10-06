@@ -123,3 +123,4 @@ para trocar portas do host ou rodar backend/testes nativamente. Grupos: Django (
 | `backend:test` "passa" sem banco | resultado veio do cache do moon | `moon run backend:test --force` |
 | `pnpm add` falha com `MINIMUM_RELEASE_AGE_VIOLATION` | versão publicada há menos de 1 dia | usar a versão anterior |
 | Página 404 em HTML no navegador | `DEBUG=True` mostra a página de debug do Django | esperado em dev; com `DEBUG=False` a resposta é JSON |
+| `celery-worker` sai com `Connection reset by peer`; RabbitMQ registra `no_exists` (`rabbit_vhost`, `rabbit_runtime_parameters`) mas segue "healthy" | o banco de metadados do RabbitMQ ficou inconsistente (visto após o host suspender com o stack no ar); `rabbitmq-diagnostics ping` não detecta | `docker compose restart rabbitmq`; os serviços Celery têm `restart: unless-stopped` e voltam sozinhos |

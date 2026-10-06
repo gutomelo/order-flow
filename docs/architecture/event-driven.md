@@ -116,3 +116,9 @@ está `CANCELLED` aguardando `PaymentRefunded`).
 `on_commit` tem uma janela de perda (processo cai entre o commit e o enfileiramento). Para eventos
 com consequência de negócio (ex.: `PaymentRefunded` → `orders`), o ADR-011 propõe o Outbox.
 A API `publish()` é a mesma nos dois modos. Decisão final antes da Phase 8.
+
+## Estado atual (Phase 6)
+
+`shared/events` ainda **não existe**: nenhum evento tem consumidor (reserva síncrona na Phase 7,
+notificações na 10, auditoria na 12). O barramento entra junto com o primeiro consumidor real; até
+lá, `OrderStatusHistory` registra transacionalmente toda transição de pedido.

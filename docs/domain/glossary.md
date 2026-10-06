@@ -31,7 +31,8 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | CNPJ | `tax_id` | Documento da empresa; numérico ou alfanumérico (a partir de 07/2026) |
 | Razão social / nome fantasia | `legal_name` / `trade_name` | Nome jurídico / nome comercial |
 | Categoria | `Category` | Classificação hierárquica de produtos |
-| Tabela de preço | `PriceList` | Preços aplicáveis a um segmento/contrato |
+| Tabela de preço | `PriceList` | Preços de produtos; sem segmento = **tabela padrão** da organização |
+| Origem do preço | `PriceSource` | `SEGMENT` ou `DEFAULT`, guardada na linha do pedido |
 | Política de preço | `PricingStrategy` | Regra que calcula o preço unitário (padrão, atacado, contrato) |
 | Desconto | `Discount` / `DiscountPolicy` | Redução aplicada a linha ou pedido |
 | Dinheiro | `Money` | Valor `Decimal` + moeda (`BRL`) |
@@ -41,11 +42,16 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Português | Código | Definição |
 | --- | --- | --- |
 | Pedido | `Order` | Intenção de compra de um cliente com ciclo de vida próprio |
-| Número do pedido | `Order.number` | Identificador legível e sequencial (`OF-2026-000123`); o ID técnico é UUID |
+| Número do pedido | `Order.number` | Inteiro sequencial por organização, sem lacunas, atribuído no envio (exibido `#000123`); o ID técnico é UUID |
 | Item do pedido | `OrderLine` | Produto, quantidade e preço congelado no momento da submissão |
 | Status do pedido | `OrderStatus` | Estado no ciclo de vida (ver `orders.md`) |
 | Histórico de status | `OrderStatusHistory` | Registro de cada transição (de, para, quem, quando, motivo) |
-| Rascunho | `DRAFT` | Pedido editável, sem preço congelado nem reserva |
+| Rascunho | `DRAFT` | Pedido editável, sem número, preço congelado nem reserva |
+| Total esperado | `expected_total` | Total que a pessoa viu ao enviar; se a recotação diverge, o envio é recusado (`PRICES_CHANGED`) |
+| Prévia (cotação) | `QuoteOrder` (`POST /orders/quote`) | Preços e totais calculados pelo backend sem gravar nada |
+| Nº do pedido de compra | `purchase_order_number` | Referência do próprio cliente B2B para o pedido |
+| Cópia do endereço | `shipping_snapshot` | Endereço de entrega congelado no envio |
+| Chave de idempotência | `Idempotency-Key` | UUID por intenção que torna seguro repetir `POST /orders` (ADR-012) |
 | Submeter pedido | `PlaceOrder` / `SubmitOrder` | Confirmar comercialmente o pedido |
 | Cancelamento | `CancelOrder` | Encerrar o pedido antes do envio |
 | Devolução | `OrderReturn` | Retorno de mercadoria após entrega |
