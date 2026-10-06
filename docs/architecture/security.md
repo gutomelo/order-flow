@@ -135,7 +135,18 @@ Erros 500 retornam mensagem genérica com `request_id`; detalhes apenas no log.
 ## Pagamentos
 
 O OrderFlow **não armazena dados de cartão**. O `PaymentGateway` trabalha com tokens/IDs do
-provedor; o `FakePaymentGateway` simula aprovação, recusa e timeout.
+provedor; o `FakePaymentGateway` simula aprovação, recusa, timeout, indisponibilidade e estorno
+recusado (`docs/domain/payments.md`).
+
+- O `card_token` é `write_only` no serializer, repassado ao gateway e **nunca** persistido nem
+  logado (teste `test_card_token_is_never_stored` procura o token no banco e na resposta).
+- Cobrar e estornar exigem `Idempotency-Key` (ADR-012); a cobrança usa o modo de várias
+  transações para não cobrar duas vezes num reenvio.
+- **Cancelar pedido pago** exige `orders:cancel_paid` (MANAGER, FINANCE, ADMIN): a permissão
+  depende do estado do pedido, então a regra está numa política do domínio
+  (`orders.domain.policies.permission_to_cancel`), não espalhada em `if`s.
+- Estornos (`payments:refund`) só para FINANCE e ADMIN; a listagem financeira exige
+  `payments:read`. Tudo escopado por organização (anti-IDOR).
 
 ## Revisão
 

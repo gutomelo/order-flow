@@ -157,3 +157,21 @@ def release_reservations(
         lines=len(reservations),
     )
     return len(reservations)
+
+
+def confirm_reservations(organization_id: UUID, order_id: UUID) -> int:
+    """Pagamento aprovado: ACTIVE → CONFIRMED (não expira mais). Saldo não muda — a unidade
+    continua reservada até o envio (`CONSUMED`, Phase 9)."""
+    with transaction.atomic():
+        reservations = list(
+            StockReservation.objects.for_organization(organization_id)
+            .select_for_update()
+            .filter(order_id=order_id, status=ReservationStatus.ACTIVE)
+            .order_by("id")
+        )
+        for reservation in reservations:
+            assert_reservation_transition(ReservationStatus.ACTIVE, ReservationStatus.CONFIRMED)
+            reservation.status = ReservationStatus.CONFIRMED
+            reservation.save(update_fields=["status", "updated_at"])
+    logger.info("inventory.stock.confirmed", order_id=str(order_id), lines=len(reservations))
+    return len(reservations)

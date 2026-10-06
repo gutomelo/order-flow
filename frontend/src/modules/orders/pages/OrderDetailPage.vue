@@ -11,6 +11,7 @@ import { useApiErrorMessage } from '@/composables/useApiErrorMessage'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { formatPostalCode } from '@/modules/customers/addresses'
 import CancelOrderDialog from '@/modules/orders/components/CancelOrderDialog.vue'
+import OrderPaymentPanel from '@/modules/orders/components/OrderPaymentPanel.vue'
 import OrderStatusBadge from '@/modules/orders/components/OrderStatusBadge.vue'
 import OrderTotals from '@/modules/orders/components/OrderTotals.vue'
 import { useAvailability } from '@/modules/inventory/composables/useInventory'
@@ -40,10 +41,18 @@ const notFound = computed(() => error.value instanceof ApiError && error.value.s
 
 const isDraft = computed(() => order.value?.status === 'DRAFT')
 const canEdit = computed(() => isDraft.value && session.can('orders:create'))
-// Estados pagos (cancelamento com refund) chegam com pagamentos (Phase 8).
+// Espelha a política do backend (`permission_to_cancel`): pedido pago só com `orders:cancel_paid`,
+// e o cancelamento estorna o pagamento. Aqui é só UX; o backend decide.
 const CANCELLABLE = new Set(['DRAFT', 'PENDING', 'AWAITING_PAYMENT'])
-const canCancel = computed(
-  () => session.can('orders:cancel') && CANCELLABLE.has(order.value?.status ?? ''),
+const CANCELLABLE_WITH_REFUND = new Set(['PAID', 'PROCESSING', 'READY_TO_SHIP'])
+const refundsOnCancel = computed(() => CANCELLABLE_WITH_REFUND.has(order.value?.status ?? ''))
+const canCancel = computed(() =>
+  refundsOnCancel.value
+    ? session.can('orders:cancel_paid')
+    : session.can('orders:cancel') && CANCELLABLE.has(order.value?.status ?? ''),
+)
+const showPayments = computed(
+  () => order.value?.status === 'AWAITING_PAYMENT' || Boolean(order.value?.payments.length),
 )
 // Enviado, mas sem reserva (faltou estoque ou a reserva expirou).
 const withoutReservation = computed(() => order.value?.status === 'PENDING')
@@ -361,6 +370,7 @@ const cancelOpen = ref(false)
         </div>
 
         <aside class="flex h-fit flex-col gap-6">
+          <OrderPaymentPanel v-if="showPayments" :order="order" />
           <section
             aria-labelledby="order-summary-heading"
             class="rounded-lg border border-border bg-surface p-5"
@@ -466,7 +476,8 @@ const cancelOpen = ref(false)
         v-if="canCancel"
         v-model:open="cancelOpen"
         :order="order"
-        :releases-stock="order.status === 'AWAITING_PAYMENT'"
+        :releases-stock="order.status === 'AWAITING_PAYMENT' || refundsOnCancel"
+        :refunds="refundsOnCancel"
         :title="
           isDraft
             ? t('orders.cancel.discardTitle')

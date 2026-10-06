@@ -9,39 +9,49 @@
 
 ## Infraestrutura (`shared/events`)
 
-In-process, simples e explícita — sem framework de mensageria próprio:
+Explícita e sem framework de mensageria próprio. Implementada na Phase 8 com **Transactional
+Outbox** (ADR-011):
 
 ```python
-publish(event)                                   # chamado pelo use case, dentro da transação
-@subscribe(OrderCreated, mode="after_commit")    # registra handler (no ready() do app consumidor)
+publish(event)                          # no use case, DENTRO da transação: grava em events_outbox
+@subscribe("payments.payment.approved") # registra handler (importado no ready() do app consumidor)
+def on_payment_approved(event: EventEnvelope) -> None: ...
 ```
 
-| Modo | Execução | Uso |
-| --- | --- | --- |
-| `in_transaction` | síncrono, dentro da transação do use case | efeito que deve ser atômico com a mudança (auditoria crítica) |
-| `after_commit` | via `transaction.on_commit`; o handler normalmente apenas enfileira uma task Celery | e-mail, notificações, analytics, documentos |
+| Peça | Execução |
+| --- | --- |
+| `publish` | grava `OutboxEvent` na transação do use case; fora de transação é erro |
+| `events.relay_outbox` (Beat, 5 s) | `SKIP LOCKED` nos não publicados; enfileira uma task por (evento, handler) |
+| `events.deliver` | cria `ProcessedEvent (evento, handler)` e roda o handler na mesma transação; retry exponencial |
+| `maintenance.purge_published_events` | apaga publicados com mais de 30 dias |
 
 Garantias:
-- Rollback ⇒ handlers `after_commit` não executam (nenhum evento "fantasma").
-- Handlers são idempotentes (deduplicação por `event_id` quando há efeito externo).
-- Falha em handler `after_commit` não desfaz o caso de uso (consistência eventual); falha em
-  `in_transaction` desfaz (por isso esse modo é restrito).
+- Rollback ⇒ o evento nunca existiu (nenhum evento "fantasma").
+- Commit ⇒ o evento será entregue, mesmo que o processo caia ou o RabbitMQ esteja fora do ar.
+- Entrega at-least-once, **efeito exactly-once por handler** (`ProcessedEvent` UNIQUE).
+- Falha em handler não desfaz o caso de uso (consistência eventual) e não bloqueia os outros
+  handlers do mesmo evento.
+
+Ainda **não implementado** (entra com o primeiro consumidor que precise): modo síncrono
+`in_transaction` para auditoria crítica (Phase 12). Até lá, `OrderStatusHistory` registra
+transacionalmente toda transição de pedido.
 
 ```mermaid
 sequenceDiagram
-    participant UC as PlaceOrder
+    participant UC as CancelOrder
     participant DB as PostgreSQL
-    participant Bus as shared.events
-    participant Audit as audit handler
-    participant MQ as RabbitMQ
+    participant Beat as Celery Beat (relay)
     participant W as Celery worker
-    UC->>DB: BEGIN; insert order; reserve stock
-    UC->>Bus: publish(OrderCreated)
-    Bus->>Audit: in_transaction → AuditLog
+    participant GW as PaymentGateway
+    UC->>DB: BEGIN; pedido CANCELLED; libera estoque; Refund PENDING
+    UC->>DB: INSERT events_outbox (payments.refund.requested)
     UC->>DB: COMMIT
-    Bus->>MQ: on_commit → enqueue send_order_confirmation
-    MQ->>W: task
-    W->>W: idempotência por event_id → envia e-mail
+    Beat->>DB: SELECT … FOR UPDATE SKIP LOCKED (não publicados)
+    Beat->>W: events.deliver(evento, handler)
+    W->>DB: INSERT ProcessedEvent (dedup)
+    W->>GW: refund (fora de lock)
+    W->>DB: Refund SUCCEEDED + outbox (payments.payment.refunded)
+    Beat->>W: events.deliver → orders: CANCELLED → REFUNDED
 ```
 
 ## Estrutura de um evento
@@ -75,9 +85,12 @@ sensíveis. Consumidores que precisam de mais dados consultam o módulo dono pel
 | `StockAdjusted` | inventory | audit | in_transaction |
 | `StockLevelLow` | inventory | notifications, dashboard (invalidação de cache) | after_commit |
 | `StockReceived`, `StockTransferred`, `StockReturned`, `StockConsumed` | inventory | audit | in_transaction |
-| `PaymentApproved` | payments | audit, notifications | in_transaction / after_commit |
-| `PaymentFailed` | payments | notifications | after_commit |
-| `PaymentRefunded` | payments | **orders** (`CANCELLED/DELIVERED → REFUNDED`), audit, notifications | after_commit (candidato ao Outbox) |
+| `payments.payment.approved` ✅ | payments | **orders** (`AWAITING_PAYMENT → PAID`; estorno se o pedido não pode mais ser pago) | outbox |
+| `payments.refund.requested` ✅ | payments | **payments** (executa o estorno no gateway, fora da transação de quem pediu) | outbox |
+| `payments.payment.refunded` ✅ | payments | **orders** (`CANCELLED → REFUNDED`) | outbox |
+| `PaymentFailed` | payments | notifications | outbox (Phase 10) |
+
+✅ = implementado (Phase 8). Os demais são o planejado; nomes seguem `module.entity.action`.
 
 Novos eventos: skill `create-domain-event` e atualização desta tabela.
 
@@ -111,14 +124,11 @@ gateway confirmar o refund.
 A UI comunica estados intermediários honestamente (ex.: "Reembolso solicitado" enquanto o pedido
 está `CANCELLED` aguardando `PaymentRefunded`).
 
-## Transactional Outbox
+## Estado atual (Phase 8)
 
-`on_commit` tem uma janela de perda (processo cai entre o commit e o enfileiramento). Para eventos
-com consequência de negócio (ex.: `PaymentRefunded` → `orders`), o ADR-011 propõe o Outbox.
-A API `publish()` é a mesma nos dois modos. Decisão final antes da Phase 8.
-
-## Estado atual (Phase 7)
-
-`shared/events` ainda **não existe**: nenhum evento tem consumidor (a reserva é chamada de forma
-síncrona por `orders`; notificações chegam na Phase 10 e auditoria na 12). O barramento entra junto com o primeiro consumidor real; até
-lá, `OrderStatusHistory` registra transacionalmente toda transição de pedido.
+- `shared/events` com outbox (ADR-011 **Accepted**). Três eventos de `payments`, consumidos por
+  `orders` e pelo próprio `payments` (tabela acima).
+- A reserva de estoque continua **síncrona** (`orders` chama `inventory.application`): precisa
+  de resposta imediata (tem ou não tem estoque), então não é evento.
+- Na UI, o atraso do relay (até 5 s) aparece como estado intermediário honesto: a tela do pedido
+  e a de pagamentos fazem polling enquanto há trabalho em background.

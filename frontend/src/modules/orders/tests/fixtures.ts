@@ -72,6 +72,7 @@ export function buildOrder(overrides: Partial<Order> = {}): Order {
         price_source: 'DEFAULT',
       },
     ],
+    payments: [],
     history: [
       {
         id: 'h-1',

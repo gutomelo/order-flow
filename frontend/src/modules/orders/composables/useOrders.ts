@@ -3,7 +3,7 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 import { inventoryKeys } from '@/modules/inventory/composables/useInventory'
 import * as api from '@/modules/orders/api/ordersApi'
-import type { DraftInput, LineInput, OrderFilters } from '@/modules/orders/types'
+import type { DraftInput, LineInput, Order, OrderFilters } from '@/modules/orders/types'
 
 export const ordersKeys = {
   all: ['orders'] as const,
@@ -21,11 +21,33 @@ export function useOrdersList(filters: MaybeRefOrGetter<OrderFilters>) {
   })
 }
 
+const PENDING_POLL_MS = 5000
+
+/**
+ * Há trabalho do backend em curso: cobrança sem resposta (reconciliação), estorno em execução, ou
+ * resultado já gravado em `payments` que o pedido só aplica quando o evento chega (outbox, ADR-011).
+ */
+export function awaitsBackgroundWork(order: Order | undefined): boolean {
+  if (!order) return false
+  const payments = order.payments
+  const refunds = payments.flatMap((p) => p.refunds)
+  return (
+    payments.some((p) => p.status === 'PENDING') ||
+    // Estorno manual pendente espera o financeiro, não o backend.
+    payments.some((p) => p.method === 'CARD' && p.refunds.some((r) => r.status === 'PENDING')) ||
+    (['PENDING', 'AWAITING_PAYMENT'].includes(order.status) &&
+      payments.some((p) => p.status === 'APPROVED')) ||
+    (order.status === 'CANCELLED' && refunds.some((r) => r.status === 'SUCCEEDED'))
+  )
+}
+
 export function useOrder(id: MaybeRefOrGetter<string | undefined>) {
   return useQuery({
     queryKey: computed(() => ordersKeys.detail(toValue(id) ?? '')),
     queryFn: () => api.getOrder(toValue(id) ?? ''),
     enabled: computed(() => Boolean(toValue(id))),
+    // Enquanto o backend conclui algo em background, a tela acompanha sem a pessoa recarregar.
+    refetchInterval: (query) => (awaitsBackgroundWork(query.state.data) ? PENDING_POLL_MS : false),
   })
 }
 
@@ -76,6 +98,16 @@ export const usePlaceOrder = () =>
   useOrdersMutation(
     (input: { data: DraftInput & { expected_total: string | null }; key: string }) =>
       api.placeOrder(input.data, input.key),
+  )
+
+export const usePayOrder = () =>
+  useOrdersMutation((input: { id: string; cardToken: string; key: string }) =>
+    api.payOrder(input.id, input.cardToken, input.key),
+  )
+
+export const useRecordPayment = () =>
+  useOrdersMutation((input: { id: string; reference: string; key: string }) =>
+    api.recordPayment(input.id, input.reference, input.key),
   )
 
 export const useReserveOrder = () => useOrdersMutation((id: string) => api.reserveOrder(id))

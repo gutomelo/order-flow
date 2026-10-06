@@ -13,10 +13,11 @@ código e documento é um defeito (de um dos dois). Atualize o documento no mesm
 | [pricing.md](pricing.md) | Tabelas de preço (padrão e por segmento), regra de resolução do preço | Vigente |
 | [orders.md](orders.md) | Ciclo de vida do pedido, máquina de estados, totais, cancelamento, devolução | Vigente |
 | [inventory.md](inventory.md) | Saldo, reservas, movimentações, concorrência, expiração | Vigente |
+| [payments.md](payments.md) | Cobrança por cartão (gateway) e baixa manual, estornos, reconciliação, eventos | Vigente |
 
 Documentos a criar nas fases correspondentes (template `.claude/templates/domain-doc.md`):
 
-`payments.md` (Phase 8), `shipping.md` (Phase 9), `notifications.md` (Phase 10), `audit.md` (Phase 12).
+`shipping.md` (Phase 9), `notifications.md` (Phase 10), `audit.md` (Phase 12).
 
 A visão geral dos módulos, suas fronteiras e dependências está em
 [../architecture/domain-model.md](../architecture/domain-model.md).

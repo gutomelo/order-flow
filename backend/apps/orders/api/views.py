@@ -7,6 +7,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -16,8 +17,10 @@ from apps.identity.domain.permissions import Permission
 from apps.orders.api.serializers import (
     CancelSerializer,
     DraftSerializer,
+    ManualPaymentSerializer,
     OrderSerializer,
     OrderSummarySerializer,
+    PaySerializer,
     PlaceOrderSerializer,
     QuoteRequestSerializer,
     QuoteSerializer,
@@ -29,9 +32,13 @@ from apps.orders.application.commands import (
     reserve_order_stock,
     submission,
 )
+from apps.orders.application.payment_flow import pay_order, record_manual_payment
 from apps.orders.application.queries import quote_order
 from apps.orders.domain.lines import LineRequest
+from apps.orders.domain.policies import permission_to_cancel
+from apps.orders.domain.status import OrderStatus
 from apps.orders.models import Order
+from apps.payments.domain.status import PaymentStatus
 from shared.idempotency.decorators import HEADER, idempotent
 from shared.permissions import HasPermission
 from shared.tenancy.api import TenantScopedQuerysetMixin
@@ -47,7 +54,9 @@ _ACTION_PERMISSIONS: dict[str, Permission] = {
     "submit": Permission.ORDERS_CREATE,
     "quote": Permission.ORDERS_CREATE,
     "reserve": Permission.ORDERS_CREATE,
-    "cancel": Permission.ORDERS_CANCEL,
+    "pay": Permission.PAYMENTS_CREATE,
+    "record_payment": Permission.PAYMENTS_CREATE,
+    # `cancel`: a permissão depende do estado (domain/policies.py), checada na ação.
 }
 
 _IDEMPOTENCY_HEADER = OpenApiParameter(
@@ -85,6 +94,10 @@ class OrderViewSet(
     ordering = ("-created_at",)
 
     def get_permissions(self) -> Sequence["_SupportsHasPermission"]:
+        if self.action == "cancel":
+            # A permissão depende do estado (cancelar pago = `orders:cancel_paid`, que FINANCE tem
+            # sem ter `orders:cancel`): checada na ação, depois de carregar o pedido.
+            return [IsAuthenticated()]
         required = _ACTION_PERMISSIONS.get(self.action or "", Permission.ORDERS_READ)
         return [IsAuthenticated(), HasPermission(required)()]
 
@@ -170,10 +183,47 @@ class OrderViewSet(
         )
         return self._respond(order)
 
+    @extend_schema(
+        request=PaySerializer,
+        responses={200: OrderSerializer, 202: OrderSerializer},
+        parameters=[_IDEMPOTENCY_HEADER],
+        description="200: pago. 202: provedor sem resposta (reconciliação em andamento).",
+    )
+    @action(detail=True, methods=["post"])
+    @idempotent("orders.pay", atomic=False)  # várias transações: o gateway fica entre elas
+    def pay(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        serializer = PaySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order, payment_status = pay_order(
+            self.organization_id, self.actor_id, order.id, **serializer.validated_data
+        )
+        code = status.HTTP_202_ACCEPTED if payment_status == PaymentStatus.PENDING else 200
+        return self._respond(order, code)
+
+    @extend_schema(
+        request=ManualPaymentSerializer,
+        responses=OrderSerializer,
+        parameters=[_IDEMPOTENCY_HEADER],
+    )
+    @action(detail=True, methods=["post"], url_path="record-payment")
+    @idempotent("orders.record_payment")
+    def record_payment(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        serializer = ManualPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = record_manual_payment(
+            self.organization_id, self.actor_id, order.id, **serializer.validated_data
+        )
+        return self._respond(order)
+
     @extend_schema(request=CancelSerializer, responses=OrderSerializer)
     @action(detail=True, methods=["post"])
     def cancel(self, request: Request, pk: str | None = None) -> Response:
         order = self.get_object()
+        user: Any = request.user
+        if not user.has_api_permission(permission_to_cancel(OrderStatus(order.status))):
+            raise PermissionDenied()
         serializer = CancelSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = cancel_order.cancel_order(

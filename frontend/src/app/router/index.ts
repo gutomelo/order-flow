@@ -16,6 +16,7 @@ import { customersRoutes } from '@/modules/customers/routes'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
 import { ordersRoutes } from '@/modules/orders/routes'
+import { paymentsRoutes } from '@/modules/payments/routes'
 import { pricingRoutes } from '@/modules/pricing/routes'
 import { suppliersRoutes } from '@/modules/suppliers/routes'
 import { usersRoutes } from '@/modules/users/routes'
@@ -44,6 +45,7 @@ export const routes: RouteRecordRaw[] = [
       { path: '', redirect: { name: 'dashboard' } },
       ...dashboardRoutes,
       ...ordersRoutes,
+      ...paymentsRoutes,
       ...pricingRoutes,
       ...customersRoutes,
       ...catalogRoutes,

@@ -85,6 +85,11 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Pagamento | `Payment` | Tentativa de cobrança de um pedido |
 | Estorno / reembolso | `Refund` | Devolução total ou parcial de um pagamento |
 | Gateway de pagamento | `PaymentGateway` | Porta para o provedor de pagamento (adapter) |
+| Baixa manual / pagamento recebido | `PaymentMethod.MANUAL` | Pagamento recebido fora do sistema (PIX, boleto, transferência) e registrado pelo financeiro |
+| Recusado | `PaymentStatus.DECLINED` | Emissor recusou a cobrança (ex.: saldo insuficiente) |
+| Falhou | `PaymentStatus.FAILED` | Provedor nunca concluiu a cobrança; nada foi cobrado |
+| Reconciliação de pagamento | `reconcile_pending_payments` | Consulta ao provedor das cobranças sem resposta |
+| Outbox (caixa de saída) | `OutboxEvent` | Evento gravado na transação da mudança e entregue depois (ADR-011) |
 | Envio / remessa | `Shipment` | Despacho físico de um pedido |
 | Transportadora / provedor de frete | `ShippingProvider` | Porta para o provedor logístico (adapter) |
 | Código de rastreio | `tracking_code` | Identificador do envio no provedor |

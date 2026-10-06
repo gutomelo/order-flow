@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.orders.application.queries import Quote
 from apps.orders.models import Order, OrderLine, OrderStatusHistory
+from apps.payments.application.queries import payments_for_order
 from shared.domain.documents import format_cnpj
 
 
@@ -85,6 +86,7 @@ class OrderSerializer(OrderSummarySerializer):
     warehouse = serializers.SerializerMethodField()
     shipping = serializers.SerializerMethodField()
     created_by = serializers.SerializerMethodField()
+    payments = serializers.SerializerMethodField()
     lines = OrderLineSerializer(many=True, read_only=True)
     history = StatusHistorySerializer(many=True, read_only=True)
 
@@ -101,6 +103,7 @@ class OrderSerializer(OrderSummarySerializer):
             "created_by",
             "lines",
             "history",
+            "payments",
         )
         read_only_fields = fields
 
@@ -131,6 +134,29 @@ class OrderSerializer(OrderSummarySerializer):
 
     def get_created_by(self, order: Order) -> dict[str, Any] | None:
         return _person(order.created_by)
+
+    def get_payments(self, order: Order) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": str(p.id),
+                "method": p.method,
+                "status": p.status,
+                "amount": str(p.amount),
+                "decline_reason": p.decline_reason,
+                "manual_reference": p.manual_reference,
+                "created_at": p.created_at.isoformat(),
+                "refunds": [
+                    {
+                        "id": str(r.id),
+                        "status": r.status,
+                        "failure_reason": r.failure_reason,
+                        "created_at": r.created_at.isoformat(),
+                    }
+                    for r in p.refunds
+                ],
+            }
+            for p in payments_for_order(order.organization_id, order.id)
+        ]
 
 
 class LineInputSerializer(serializers.Serializer[dict[str, Any]]):
@@ -218,3 +244,12 @@ class QuoteSerializer(serializers.Serializer[dict[str, Any]]):
             "total": amount(quote.totals.total),
             "currency": quote.totals.total.currency,
         }
+
+
+class PaySerializer(serializers.Serializer[dict[str, Any]]):
+    # Token gerado pelo widget do provedor no navegador; nunca persistido nem logado (P4).
+    card_token = serializers.CharField(max_length=200, write_only=True)
+
+
+class ManualPaymentSerializer(serializers.Serializer[dict[str, Any]]):
+    reference = serializers.CharField(max_length=100)

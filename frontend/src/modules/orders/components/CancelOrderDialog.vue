@@ -18,11 +18,14 @@ const {
   order,
   title,
   releasesStock = false,
+  refunds = false,
 } = defineProps<{
   order: Order
   title: string
   /** Pedido com reserva: o estoque volta a ficar disponível. */
   releasesStock?: boolean
+  /** Pedido pago: o cancelamento estorna o pagamento (pelo outbox, em background). */
+  refunds?: boolean
 }>()
 
 const { t } = useI18n()
@@ -50,7 +53,7 @@ async function onSubmit() {
   }
   try {
     await cancel.mutateAsync({ id: order.id, reason: reason.value.trim() })
-    toasts.success(t('orders.cancel.done'))
+    toasts.success(refunds ? t('orders.cancel.doneWithRefund') : t('orders.cancel.done'))
     open.value = false
   } catch (error) {
     if (error instanceof ApiError && error.details.field === 'reason')
@@ -65,7 +68,11 @@ async function onSubmit() {
     v-model:open="open"
     :title="title"
     :description="
-      releasesStock ? t('orders.cancel.descriptionWithStock') : t('orders.cancel.description')
+      refunds
+        ? t('orders.cancel.descriptionWithRefund')
+        : releasesStock
+          ? t('orders.cancel.descriptionWithStock')
+          : t('orders.cancel.description')
     "
   >
     <form id="cancel-order-form" class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">

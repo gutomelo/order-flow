@@ -177,6 +177,7 @@ modules = [
     "apps.inventory.api",
     "apps.pricing.api",
     "apps.orders.api",
+    "apps.payments.api",
 ]
 
 [[tool.importlinter.contracts]]
@@ -225,6 +226,7 @@ source_modules = [
     "apps.catalog",
     "apps.inventory",
     "apps.pricing",
+    "apps.payments",
 ]
 forbidden_modules = ["apps.orders"]
 
@@ -233,3 +235,24 @@ name = "pricing não é conhecido por catálogo, clientes e estoque"
 type = "forbidden"
 source_modules = ["apps.catalog", "apps.customers", "apps.inventory", "apps.suppliers"]
 forbidden_modules = ["apps.pricing"]
+
+[[tool.importlinter.contracts]]
+name = "payments: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.payments.api",
+    "apps.payments.application",
+    "apps.payments.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "payments não conhece outros módulos de negócio (recebe order_id opaco)"
+type = "forbidden"
+source_modules = ["apps.payments"]
+forbidden_modules = [
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+]

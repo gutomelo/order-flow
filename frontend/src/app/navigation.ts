@@ -11,6 +11,7 @@ import {
   Truck,
   Users,
   UsersRound,
+  Wallet,
   Warehouse,
 } from '@lucide/vue'
 import type { Component } from 'vue'
@@ -28,6 +29,7 @@ export interface NavigationItem {
 export const primaryNavigation: NavigationItem[] = [
   { routeName: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { routeName: 'orders', labelKey: 'nav.orders', icon: ShoppingCart, permission: 'orders:read' },
+  { routeName: 'payments', labelKey: 'nav.payments', icon: Wallet, permission: 'payments:read' },
   {
     routeName: 'customers',
     labelKey: 'nav.customers',

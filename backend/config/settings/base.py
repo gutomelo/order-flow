@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     # Infraestrutura transversal com tabela própria
     "shared.idempotency",
+    "shared.events",
     # Módulos de negócio
     "apps.identity",
     "apps.customers",
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "apps.catalog",
     "apps.inventory",
     "apps.pricing",
+    "apps.payments",
     "apps.orders",
 ]
 
@@ -214,6 +216,10 @@ STOCK_RESERVATION_TTL_HOURS = env.int("STOCK_RESERVATION_TTL_HOURS", default=48)
 STOCK_LOCK_TIMEOUT_MS = env.int("STOCK_LOCK_TIMEOUT_MS", default=3000)
 # Pedido PENDING sem atividade por mais que isto é cancelado (PENDING_TIMEOUT).
 ORDER_PENDING_MAX_AGE_DAYS = env.int("ORDER_PENDING_MAX_AGE_DAYS", default=7)
+# Gateway de pagamento (adapter). Só existe o simulado até integrar um provedor real.
+PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", default="fake")
+# Consultas ao provedor para cobranças sem resposta antes de marcá-las FAILED.
+PAYMENT_RECONCILIATION_MAX_ATTEMPTS = env.int("PAYMENT_RECONCILIATION_MAX_ATTEMPTS", default=10)
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

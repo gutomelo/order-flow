@@ -57,6 +57,7 @@ export default {
     label: 'Navegação principal',
     dashboard: 'Dashboard',
     orders: 'Pedidos',
+    payments: 'Pagamentos',
     priceLists: 'Tabelas de preço',
     customers: 'Clientes',
     segments: 'Segmentos',
@@ -381,6 +382,9 @@ export default {
       description: 'O cancelamento fica registrado no histórico do pedido e não pode ser desfeito.',
       descriptionWithStock:
         'O estoque reservado volta a ficar disponível. O cancelamento fica no histórico e não pode ser desfeito.',
+      descriptionWithRefund:
+        'O pagamento será estornado ao cliente e o estoque reservado volta a ficar disponível. O cancelamento não pode ser desfeito.',
+      doneWithRefund: 'Pedido cancelado. O estorno foi solicitado e aparece no pagamento.',
       reason: 'Motivo',
       reasonHelp: 'Obrigatório. Ex.: cliente desistiu, pedido duplicado.',
       reasonRequired: 'Informe o motivo do cancelamento.',
@@ -388,12 +392,98 @@ export default {
       confirm: 'Confirmar cancelamento',
       done: 'Pedido cancelado.',
     },
+    payment: {
+      title: 'Pagamento',
+      awaiting: 'Aguardando pagamento do cliente.',
+      inFlight:
+        'Pagamento em processamento: o provedor ainda não confirmou. Esta tela atualiza sozinha.',
+      processing:
+        'O provedor não respondeu a tempo. O pagamento ficou em processamento e será confirmado automaticamente.',
+      approved: 'Pagamento aprovado. Pedido pago.',
+      recorded: 'Pagamento registrado. Pedido pago.',
+      testCard: 'Cartão de teste',
+      testCardHelp:
+        'Gateway simulado: cada cartão produz um cenário. Em produção, o cartão é digitado no widget do provedor.',
+      testCards: {
+        tok_approved: 'Aprovado',
+        tok_declined: 'Recusado (saldo insuficiente)',
+        tok_timeout: 'Provedor sem resposta (timeout)',
+        tok_unavailable: 'Provedor indisponível',
+        tok_refund_fails: 'Aprovado, mas o estorno falha',
+      },
+      payWithCard: 'Pagar {total} com cartão',
+      manualTitle: 'Pagamento recebido fora do sistema',
+      reference: 'Referência do pagamento',
+      referenceHelp: 'Ex.: id da transação PIX, número do boleto ou da transferência.',
+      referenceRequired: 'Informe a referência do pagamento.',
+      record: 'Registrar pagamento recebido',
+      none: 'Nenhuma tentativa de pagamento.',
+      attempts: 'Tentativas de pagamento',
+    },
     empty: {
       title: 'Nenhum pedido ainda',
       description: 'Crie o primeiro pedido para um cliente.',
     },
     error: {
       title: 'Não foi possível carregar os pedidos',
+    },
+  },
+  payments: {
+    title: 'Pagamentos',
+    description: 'Cobranças e estornos dos pedidos.',
+    fields: {
+      order: 'Pedido',
+      method: 'Forma',
+      amount: 'Valor',
+      refund: 'Estorno',
+      date: 'Data',
+    },
+    filters: {
+      search: 'Buscar por pedido ou referência',
+    },
+    method: {
+      CARD: 'Cartão',
+      MANUAL: 'Pagamento recebido',
+    },
+    paymentStatus: {
+      PENDING: 'Em processamento',
+      APPROVED: 'Aprovado',
+      DECLINED: 'Recusado',
+      FAILED: 'Falhou',
+      REFUNDED: 'Estornado',
+    },
+    refundStatus: {
+      PENDING: 'Estorno pendente',
+      SUCCEEDED: 'Estorno concluído',
+      FAILED: 'Estorno falhou',
+    },
+    referenceLine: 'Referência: {reference}',
+    declineLine: 'Motivo da recusa: {reason}',
+    refundOn: 'Estorno solicitado em {date}',
+    failedNote: 'O provedor não concluiu a cobrança. Nada foi cobrado; é possível tentar de novo.',
+    manualRefundPending:
+      'Aguardando o financeiro devolver o valor ao cliente e confirmar em Pagamentos.',
+    reasons: {
+      insufficient_funds: 'saldo insuficiente',
+      refund_rejected: 'o provedor recusou o estorno',
+    },
+    refundActions: {
+      retry: 'Tentar estorno de novo',
+      retryTitle: 'Tentar de novo o estorno do pedido {order}?',
+      retryDescription: 'O provedor recebe um novo pedido de estorno de {amount}.',
+      retryDone: 'Nova tentativa de estorno enviada.',
+      confirm: 'Confirmar estorno feito',
+      confirmTitle: 'Confirmar o estorno do pedido {order}?',
+      confirmDescription:
+        'Confirme só depois de devolver {amount} ao cliente (PIX, transferência). O pedido passa a reembolsado.',
+      confirmDone: 'Estorno confirmado.',
+    },
+    empty: {
+      title: 'Nenhum pagamento ainda',
+      description: 'Os pagamentos aparecem aqui quando um pedido é pago ou tem uma tentativa.',
+    },
+    error: {
+      title: 'Não foi possível carregar os pagamentos',
     },
   },
   pricing: {

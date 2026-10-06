@@ -4,13 +4,15 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 7 — Stock Reservations concluída; próxima: Phase 8 — Payments.** Existem a
+**Fase atual: Phase 8 — Payments concluída; próxima: Phase 9 — Shipping.** Existem a
 fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT), `customers` (clientes,
 segmentos, endereços e contatos), `suppliers`, `catalog` (produtos e categorias), `inventory`
 (depósitos, saldos, recebimentos, ajustes, transferências e o ledger de movimentações), `pricing`
-(tabela padrão + por segmento) e `orders` (rascunho → `PENDING`, cancelamento, numeração,
-idempotência, reserva de estoque com expiração). Pedidos param em `AWAITING_PAYMENT` (ou
-`PENDING` sem estoque): pagamento é da Phase 8, envio da 9. Não crie models, endpoints ou telas de fases futuras
+(tabela padrão + por segmento), `orders` (rascunho → `PENDING`, cancelamento, numeração,
+idempotência, reserva de estoque com expiração, pagamento, cancelamento de pago com estorno) e
+`payments` (cartão via `PaymentGateway` fake, baixa manual, estornos, reconciliação). Eventos de
+negócio usam o Transactional Outbox de `shared/events` (ADR-011). Pedidos param em `PAID`: envio é
+da Phase 9. Não crie models, endpoints ou telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).
 
 **Multi-tenant (ADR-013):** todo model de negócio herda `shared.tenancy.TenantScopedModel`; toda

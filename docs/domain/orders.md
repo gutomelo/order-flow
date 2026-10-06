@@ -1,6 +1,8 @@
 # Domínio: Orders (Pedidos)
 
-> Fonte da verdade das regras de pedidos. Phase 7 acrescentou a reserva de estoque (envio →
+> Fonte da verdade das regras de pedidos. Phase 8 acrescentou o pagamento (cartão via gateway e
+> baixa manual), o cancelamento de pedido pago com estorno e `CANCELLED → REFUNDED` — ver
+> [Phase 8](#implementação-phase-8). Phase 7 acrescentou a reserva de estoque (envio →
 > `AWAITING_PAYMENT`, expiração, pedidos parados) — ver [Phase 7](#implementação-phase-7).
 > Phase 6 implementou rascunho, submissão (`PENDING`),
 > cancelamento antes do pagamento, numeração, preços congelados e idempotência; reserva (Phase 7),
@@ -161,8 +163,10 @@ Arredondamento: valores monetários com 2 casas, `ROUND_HALF_UP`, aplicados por 
 | `SaveDraft` / `UpdateDraft` | `POST /api/v1/orders/drafts`, `PATCH /api/v1/orders/{id}` | `orders:create` | — | — |
 | `SubmitOrder` | `POST /api/v1/orders/{id}/submit` | `orders:create` | por estado | `OrderCreated`, `StockReserved` |
 | `ReserveOrderStock` | `POST /api/v1/orders/{id}/reserve` | `orders:create` | por estado | `StockReserved` |
-| `PayOrder` | `POST /api/v1/orders/{id}/pay` | `payments:create` | `Idempotency-Key` | `PaymentApproved`/`PaymentFailed`, `OrderPaid` |
-| `CancelOrder` | `POST /api/v1/orders/{id}/cancel` | `orders:cancel` (+ `orders:cancel_paid`) | por estado | `OrderCancelled`, `StockReleased` |
+| `PayOrder` | `POST /api/v1/orders/{id}/pay` | `payments:create` | `Idempotency-Key` | `payments.payment.approved` |
+| `RecordManualPayment` | `POST /api/v1/orders/{id}/record-payment` | `payments:create` | `Idempotency-Key` | `payments.payment.approved` |
+| `CancelOrder` | `POST /api/v1/orders/{id}/cancel` | `orders:cancel`; pedido pago: `orders:cancel_paid` | por estado | `payments.refund.requested` (pedido pago) |
+| `MarkOrderRefunded` | evento `payments.payment.refunded` | sistema | por estado | — |
 | `StartPicking` | `POST /api/v1/orders/{id}/start-picking` | `orders:process` | por estado | `OrderStatusChanged` |
 | `CompletePicking` | `POST /api/v1/orders/{id}/complete-picking` | `orders:process` | por estado | `OrderStatusChanged` |
 | `ShipOrder` | `POST /api/v1/orders/{id}/ship` | `orders:ship` | por estado | `OrderShipped` |
@@ -204,10 +208,12 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
    - aprovado mas pedido **já não** está `AWAITING_PAYMENT` (reserva expirou nesse intervalo) →
      tentar reservar de novo; se conseguir → `PAID`; senão → pedido permanece `PENDING`,
      refund automático solicitado, notificação ao responsável;
-   - recusado → `Payment(FAILED)`, `PaymentFailed`; pedido continua `AWAITING_PAYMENT` (nova
-     tentativa permitida até `payment_due_at`).
-4. Timeout/indisponibilidade do gateway → `Payment` permanece `PENDING`; task de reconciliação
-   consulta o gateway com backoff e conclui o passo 3. A API responde `202 Accepted`.
+   - aprovado mas pedido `CANCELLED` (cancelado enquanto a cobrança estava no ar) → estorno;
+   - recusado → `Payment(DECLINED)`, `422 PAYMENT_DECLINED`; pedido continua `AWAITING_PAYMENT`
+     (nova tentativa permitida até `payment_due_at`).
+4. Timeout/indisponibilidade do gateway → `Payment` permanece `PENDING`; a reconciliação
+   (`payments.md`) conclui o passo 3 via evento `payments.payment.approved`. A API responde
+   `202 Accepted`. Enquanto há cobrança no ar, a expiração da reserva **pula** o pedido.
 
 ## Fluxos alternativos
 
@@ -236,6 +242,28 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 | `OrderStatusChanged` | qualquer transição | `order_id`, `from`, `to`, `changed_by` | audit |
 | `OrderShipped` | pedido → `SHIPPED` | `order_id`, `shipment_id`, `tracking_code` | notifications, audit |
 | `OrderDelivered` | pedido → `DELIVERED` | `order_id`, `delivered_at` | notifications, audit |
+
+## Implementação (Phase 8)
+
+| Peça | Onde | O que faz |
+| --- | --- | --- |
+| `pay_order` | `application/payment_flow.py` | Tx 1 (pedido travado, `Payment PENDING`) → gateway fora de transação → resultado |
+| `record_manual_payment` | idem | baixa do financeiro: `APPROVED` na hora, exige referência |
+| `apply_payment_result` | idem | **único** lugar que decide o efeito de uma aprovação no pedido (síncrona, manual ou reconciliada); idempotente |
+| `mark_order_refunded` | idem | `CANCELLED → REFUNDED` ao receber `payments.payment.refunded` |
+| `permission_to_cancel` | `domain/policies.py` | `orders:cancel_paid` para `PAID`/`PROCESSING`/`READY_TO_SHIP`; `orders:cancel` para os demais |
+| handlers | `handlers.py` | assinam `payments.payment.approved` e `payments.payment.refunded` (outbox, ADR-011) |
+
+- **`orders` coordena, `payments` não conhece pedido.** `payments` recebe `order_id` opaco e valor;
+  quem decide `PAID`, estorno ou `REFUNDED` é `orders` (contrato do import-linter).
+- **Cancelar pedido pago** (mesma transação): libera estoque, `CANCELLED`, e
+  `payments.request_refund` grava o `Refund PENDING` + evento. O estorno roda depois, pelo outbox;
+  falha do provedor fica `FAILED`, visível em **Pagamentos**, e o pedido segue `CANCELLED` até o
+  financeiro resolver.
+- **Autorização do cancelamento** depende do estado; por isso a view exige só autenticação e a
+  ação consulta `permission_to_cancel` (FINANCE cancela pedido pago sem ter `orders:cancel`).
+- **Ao pagar**, a reserva vira `CONFIRMED` (`inventory.confirm_reservations`) e `payment_due_at`
+  é limpo.
 
 ## Implementação (Phase 7)
 
@@ -338,6 +366,7 @@ use cases, a tabela não muda.
 | `DUPLICATE_ORDER_LINE` | 422 | Produto repetido no pedido |
 | `ORDER_NOT_AWAITING_PAYMENT` | 409 | Pagamento em pedido fora de `AWAITING_PAYMENT` |
 | `PAYMENT_DECLINED` | 422 | Gateway recusou o pagamento (pedido segue `AWAITING_PAYMENT`) |
+| `PAYMENT_IN_PROGRESS` | 409 | Já há uma cobrança pendente para o pedido (`payments.md`, P2) |
 | `IDEMPOTENCY_KEY_REQUIRED` / `_REUSED` / `_REQUEST_IN_PROGRESS` | 400 / 422 / 409 | ADR-012 |
 
 ## Questões em aberto

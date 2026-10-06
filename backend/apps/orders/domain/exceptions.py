@@ -79,3 +79,9 @@ class CancelReasonRequired(DomainError):
     code = "CANCEL_REASON_REQUIRED"
     http_status = 422
     default_message = "Informe o motivo do cancelamento."
+
+
+class OrderNotAwaitingPayment(DomainError):
+    code = "ORDER_NOT_AWAITING_PAYMENT"
+    http_status = 409
+    default_message = "Este pedido não está aguardando pagamento."

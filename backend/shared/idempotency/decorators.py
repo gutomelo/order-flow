@@ -13,6 +13,8 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from shared.exceptions import DomainError
+from shared.exceptions.envelope import error_envelope
 from shared.idempotency.exceptions import (
     IdempotencyKeyRequired,
     IdempotencyKeyReused,
@@ -77,16 +79,55 @@ def _claim(
     return existing, replay
 
 
-def idempotent(operation: str) -> Callable[[ViewMethod], ViewMethod]:
+def _complete(record: IdempotencyRecord, response: Response) -> None:
+    record.status = IdempotencyStatus.COMPLETED
+    record.response_status = response.status_code
+    record.response_body = json.loads(JSONRenderer().render(response.data))
+    record.save(update_fields=["status", "response_status", "response_body"])
+
+
+def _run_in_steps(
+    view_method: ViewMethod, operation: str, view: Any, request: Request, *args: Any, **kwargs: Any
+) -> Response:
+    """Operação de várias transações (pagamento: chamada ao gateway entre elas).
+
+    O registro IN_PROGRESS é commitado antes: outra requisição com a mesma chave recebe
+    `IDEMPOTENCY_REQUEST_IN_PROGRESS` em vez de cobrar de novo. Erro de domínio (ex.: cartão
+    recusado) é desfecho da intenção e também é gravado; erro inesperado apaga o registro.
+    """
+    key = _key_of(request)
+    fingerprint = _fingerprint(request)
+    with transaction.atomic():
+        record, replay = _claim(request, operation, key, fingerprint)
+    if replay is not None:
+        return replay
+    try:
+        response = view_method(view, request, *args, **kwargs)
+    except DomainError as exc:
+        response = Response(error_envelope(exc.code, exc.message, exc.details), exc.http_status)
+    except Exception:
+        IdempotencyRecord.objects.filter(id=record.id).delete()
+        raise
+    if response.status_code >= 500 or response.status_code < 200:
+        IdempotencyRecord.objects.filter(id=record.id).delete()
+        return response
+    _complete(record, response)
+    return response
+
+
+def idempotent(operation: str, *, atomic: bool = True) -> Callable[[ViewMethod], ViewMethod]:
     """Protege uma ação de view com `Idempotency-Key` (ADR-012).
 
-    O registro e o efeito ficam na mesma transação: falha com rollback apaga o registro e a
-    mesma chave pode ser reenviada. Só respostas 2xx são gravadas.
+    `atomic=True` (padrão): registro e efeito na mesma transação; falha com rollback apaga o
+    registro e a mesma chave pode ser reenviada. Só respostas 2xx são gravadas.
+    `atomic=False`: operações de várias transações (ver `_run_in_steps`).
     """
 
     def decorator(view_method: ViewMethod) -> ViewMethod:
         @wraps(view_method)
         def wrapper(self: Any, request: Request, *args: Any, **kwargs: Any) -> Response:
+            if not atomic:
+                return _run_in_steps(view_method, operation, self, request, *args, **kwargs)
             key = _key_of(request)
             fingerprint = _fingerprint(request)
             with transaction.atomic():
@@ -97,10 +138,7 @@ def idempotent(operation: str) -> Callable[[ViewMethod], ViewMethod]:
                 if not 200 <= response.status_code < 300:
                     transaction.set_rollback(True)
                     return response
-                record.status = IdempotencyStatus.COMPLETED
-                record.response_status = response.status_code
-                record.response_body = json.loads(JSONRenderer().render(response.data))
-                record.save(update_fields=["status", "response_status", "response_body"])
+                _complete(record, response)
             return response
 
         return wrapper

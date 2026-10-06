@@ -33,7 +33,7 @@ flowchart LR
     payments -. eventos .-> audit
     payments -. eventos .-> notifications
     shipping -. eventos .-> notifications
-    payments -. PaymentRefunded .-> orders
+    payments -. payment.approved / payment.refunded .-> orders
 ```
 
 Setas sólidas: chamada síncrona à camada `application` do módulo de destino.
@@ -57,11 +57,11 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | `pricing` | `PriceList`, `PriceListItem` (descontos: fase futura) | `selectors.quote_prices(org, segment, products)` |
 | `inventory` | `Warehouse`, `StockItem`, `StockReservation`, `StockMovement` | `ReserveStock`, `ReleaseReservation`, `ConfirmReservation`, `ConsumeReservation` |
 | `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderNumberSequence` (`OrderReturn`: Phase 9) | use cases do pedido |
-| `payments` | `Payment`, `Refund` | `ChargePayment`, `RequestRefund` |
+| `payments` | `Payment`, `Refund` | `create_pending_card_payment`, `execute_charge`, `record_manual_payment`, `request_refund`, `retry_refund`, `confirm_manual_refund`; queries `payments_for_order`, `has_payment_in_flight` |
 | `shipping` | `Shipment` | `CreateShipment` |
 | `notifications` | `NotificationLog` | — (reage a eventos) |
 | `audit` | `AuditLog` | `record(...)` usado por handlers |
-| `shared` | `IdempotencyRecord`, `OutboxEvent` (se ADR-011 aceito) | infraestrutura |
+| `shared` | `IdempotencyRecord`, `OutboxEvent`, `ProcessedEvent` (ADR-011) | infraestrutura |
 
 Regra: **somente o dono escreve** nas suas tabelas. Leitura cross-módulo simples via ORM (para
 joins/FKs) é tolerada; leitura com regra passa pela `application` do dono.

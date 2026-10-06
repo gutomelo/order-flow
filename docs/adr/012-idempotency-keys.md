@@ -81,6 +81,24 @@ pelos módulos.
 - Frontend: a chave é por **conteúdo** (`useIdempotencyKey`): repetir o mesmo pedido reaproveita a
   chave; mudar o conteúdo gera outra.
 
+### Implementação (Phase 8) — operações de várias transações
+
+`@idempotent("orders.pay", atomic=False)`: a cobrança chama o gateway **entre** duas transações
+(P7 em `docs/domain/payments.md`), então o registro não pode esperar o commit do efeito.
+
+- O claim `IN_PROGRESS` é commitado antes da chamada. Outra requisição com a mesma chave recebe
+  `IDEMPOTENCY_REQUEST_IN_PROGRESS` (409) em vez de cobrar de novo.
+- **Erro de domínio é desfecho** e é gravado (ex.: `PAYMENT_DECLINED` 422): reenviar a mesma chave
+  devolve a mesma recusa — sem nova cobrança. Erro inesperado (5xx/exceção) apaga o registro.
+- `202` (provedor sem resposta) também é gravado: a chave identifica a intenção, e o resultado
+  final vem da reconciliação, não de um reenvio.
+- Frontend: depois de **qualquer resposta do servidor**, a próxima tentativa usa chave nova
+  (outra intenção, ex.: outro cartão); só falha de rede reaproveita a chave
+  (`OrderPaymentPanel.vue`).
+- Custo aceito: se o processo morrer entre o claim e o desfecho, o registro fica `IN_PROGRESS` até a
+  limpeza. O dinheiro não fica inconsistente (o `Payment` `PENDING` é resolvido pela reconciliação),
+  e uma nova tentativa usa outra chave.
+
 ### Quando revisitar
 
 Se outras operações precisarem de idempotência (ex.: ajustes de estoque via integração) ou se o

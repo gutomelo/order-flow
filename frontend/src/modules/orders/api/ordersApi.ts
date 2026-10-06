@@ -59,6 +59,29 @@ export async function reserveOrder(id: string) {
   return data
 }
 
+/**
+ * Cobrança com o token do provedor. Várias transações no backend (ADR-012): a chave identifica a
+ * intenção. `accepted` = 202, o provedor não respondeu e a reconciliação vai concluir.
+ */
+export async function payOrder(id: string, cardToken: string, idempotencyKey: string) {
+  const response = await http.post<Order>(
+    `/orders/${id}/pay`,
+    { card_token: cardToken },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
+  )
+  return { order: response.data, accepted: response.status === 202 }
+}
+
+/** Baixa do financeiro (boleto, PIX, transferência conciliados fora do sistema). */
+export async function recordPayment(id: string, reference: string, idempotencyKey: string) {
+  const { data } = await http.post<Order>(
+    `/orders/${id}/record-payment`,
+    { reference },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
+  )
+  return data
+}
+
 export async function cancelOrder(id: string, reason: string) {
   const { data } = await http.post<Order>(`/orders/${id}/cancel`, { reason })
   return data

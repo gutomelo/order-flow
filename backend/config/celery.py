@@ -26,6 +26,18 @@ app.conf.task_default_queue = "default"
 # Tarefas periódicas entram aqui a partir das fases que as introduzem
 # (ex.: orders.expire_unpaid_orders na Phase 7).
 app.conf.beat_schedule = {
+    # Outbox (ADR-011): eventos gravados com o negócio são entregues em poucos segundos.
+    "relay-outbox": {"task": "events.relay_outbox", "schedule": 5.0},
+    "reconcile-pending-payments": {
+        "task": "maintenance.reconcile_pending_payments",
+        "schedule": 60.0,
+        "options": {"queue": "integrations"},
+    },
+    "purge-published-events": {
+        "task": "maintenance.purge_published_events",
+        "schedule": crontab(minute=50, hour=4),
+        "options": {"queue": "maintenance"},
+    },
     # Reserva vencida devolve o estoque e o pedido volta a PENDING (docs/domain/orders.md).
     "expire-unpaid-orders": {
         "task": "maintenance.expire_unpaid_orders",

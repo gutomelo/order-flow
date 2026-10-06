@@ -17,6 +17,7 @@ from apps.orders.application.reservations import release_order_stock
 from apps.orders.application.transitions import transition
 from apps.orders.domain.status import OrderStatus
 from apps.orders.models import Order
+from apps.payments.application.queries import has_payment_in_flight
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +35,9 @@ def expire_unpaid_order(order_id: UUID, *, now: datetime) -> bool:
             .first()
         )
         if order is None:  # pago/cancelado/em uso agora: nada a fazer
+            return False
+        if has_payment_in_flight(order.organization_id, order.id):
+            # Cobrança sem resposta ainda: não solta o estoque de quem pode ter pago.
             return False
         release_order_stock(order, None, expired=True)
         transition(order, OrderStatus.PENDING, actor_id=None, reason=EXPIRED_REASON)

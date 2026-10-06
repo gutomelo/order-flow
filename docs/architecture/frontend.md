@@ -231,6 +231,19 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Painel "Sem reserva de estoque" com "Reservar estoque" e a lista de faltas do `409` | pedido Pendente precisa de um próximo passo claro | só o status no selo |
 | Mutations de pedido invalidam também `inventory` | reservar/cancelar muda o disponível mostrado em outras telas | invalidar só `orders` |
 
+### Decisões de implementação (Phase 8)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Painel "Pagamento" no pedido com **cartão de teste** (select dos tokens do gateway simulado) e baixa manual com referência | sem gateway real, o cenário precisa ser escolhível; em produção o token viria do widget do provedor | campos de cartão no OrderFlow (PCI) |
+| Idempotency-Key do pagamento muda após **qualquer resposta** do servidor; só falha de rede reaproveita | recusa gravada (ADR-012) faria "tentar com outro cartão" devolver a recusa antiga | chave só por conteúdo |
+| `202` → toast `warning` "em processamento"; `409/422` → alerta no formulário | cobrança sem resposta não é sucesso nem erro | tratar 202 como sucesso |
+| Polling (5 s) do pedido enquanto `awaitsBackgroundWork` | reconciliação e outbox concluem em background; o E2E mostrou a tela parada em "Aguardando pagamento" com o pagamento já aprovado (o polling parava antes do evento chegar ao pedido) | botão "atualizar" |
+| Estorno manual pendente **não** faz polling | espera uma pessoa (financeiro), não o backend | polling indefinido |
+| Códigos do provedor (`insufficient_funds`) traduzidos por i18n, com fallback para o código | código cru na tela; código novo não pode quebrar | mapear no backend |
+| Página **Pagamentos** (`payments:read`) com "Tentar estorno de novo" (cartão `FAILED`) e "Confirmar estorno feito" (manual pendente), ambos com confirmação | o financeiro precisa de uma fila do que está travado | ações no detalhe do pedido |
+| Cancelar pedido pago oferecido só com `orders:cancel_paid`, com texto sobre o estorno | espelha a política do backend (`permission_to_cancel`) | mesmo botão para todos |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

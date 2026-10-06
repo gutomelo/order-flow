@@ -67,6 +67,27 @@ export interface ShippingAddress {
   state: string
 }
 
+export type PaymentStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'FAILED' | 'REFUNDED'
+export type RefundStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED'
+
+export interface OrderRefund {
+  id: string
+  status: RefundStatus
+  failure_reason: string
+  created_at: string
+}
+
+export interface OrderPayment {
+  id: string
+  method: 'CARD' | 'MANUAL'
+  status: PaymentStatus
+  amount: string
+  decline_reason: string
+  manual_reference: string
+  created_at: string
+  refunds: OrderRefund[]
+}
+
 export interface Order extends OrderSummary {
   warehouse: { id: string; code: string; name: string } | null
   shipping_address_id: string | null
@@ -78,6 +99,7 @@ export interface Order extends OrderSummary {
   created_by: { id: string; name: string } | null
   lines: OrderLine[]
   history: OrderHistoryEntry[]
+  payments: OrderPayment[]
 }
 
 export interface OrderFilters {

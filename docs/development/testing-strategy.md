@@ -103,6 +103,18 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   Sem o `lock_timeout`, o teste de `STOCK_BUSY` falha. Lição: confirme que o teste exercita o lock que
   diz proteger — outro lock no caminho pode mascarar a ausência dele.
 
+- Phase 8: sem gravar a recusa na idempotência, sem estornar a aprovação que chega após o
+  cancelamento, sem pedir estorno ao cancelar pedido pago, sem pular a expiração com cobrança no ar,
+  sem a deduplicação do `ProcessedEvent` e sem o registro `IN_PROGRESS` antes da chamada ao
+  gateway — cada um derruba um teste. Na reconciliação, tratar "provedor não conhece a cobrança"
+  como "sem resposta" (backoff de horas) e vice-versa derrubam um teste cada; não limpar o
+  `failure_reason` na nova tentativa de estorno também. No frontend, não trocar a chave após a
+  recusa, trocar após falha de rede, oferecer cancelamento de pago com `orders:cancel`, permitir
+  "tentar estorno" em pagamento manual e aceitar baixa sem referência derrubam um teste cada.
+  O E2E com worker e Beat reais achou dois problemas que os testes não pegavam: a tela parava de
+  atualizar entre a aprovação e a chegada do evento ao pedido, e "provedor indisponível" travava o
+  pedido por horas (backoff aplicado a uma resposta definitiva).
+
 ## Teste de concorrência — esqueleto
 
 ```python
