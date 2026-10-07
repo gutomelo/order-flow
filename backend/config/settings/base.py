@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.shipping",
     "apps.notifications",
+    "apps.dashboard",
     "apps.orders",
 ]
 
@@ -250,8 +251,11 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT_HOURS", default=72) * 3600
 # Tentativas de envio de um e-mail antes de marcá-lo FAILED.
 NOTIFICATIONS_MAX_ATTEMPTS = env.int("NOTIFICATIONS_MAX_ATTEMPTS", default=5)
-# Fuso usado nas datas dentro dos e-mails (o e-mail não sabe o fuso de quem lê).
-NOTIFICATIONS_TIME_ZONE = env("NOTIFICATIONS_TIME_ZONE", default="America/Sao_Paulo")
+# Fuso do negócio: datas nos e-mails (o e-mail não sabe o fuso de quem lê) e limites de "hoje",
+# "7 dias" e dos dias dos gráficos no dashboard. O banco continua em UTC.
+BUSINESS_TIME_ZONE = env("BUSINESS_TIME_ZONE", default="America/Sao_Paulo")
+# Cache dos indicadores por organização + período (0 desliga). Medição em docs/domain/dashboard.md.
+DASHBOARD_CACHE_SECONDS = env.int("DASHBOARD_CACHE_SECONDS", default=60)
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

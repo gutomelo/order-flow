@@ -75,6 +75,11 @@ class Payment(TenantScopedModel):
         ]
         indexes = [
             models.Index(fields=["order_id"], name="payments_order_idx"),
+            models.Index(  # dashboard: faturamento por período (só o que entrou de fato)
+                fields=["organization", "completed_at"],
+                condition=Q(status__in=[PaymentStatus.APPROVED, PaymentStatus.REFUNDED]),
+                name="payments_org_revenue_idx",
+            ),
             models.Index(  # reconciliação: só cartões pendentes, pelo próximo horário
                 fields=["next_attempt_at"],
                 condition=Q(status=PaymentStatus.PENDING),
@@ -117,6 +122,13 @@ class Refund(TenantScopedModel):
             models.CheckConstraint(condition=Q(amount__gt=0), name="payments_refund_amount_check"),
             models.CheckConstraint(
                 condition=Q(status__in=_values(RefundStatus)), name="payments_refund_status_check"
+            ),
+        ]
+        indexes = [
+            models.Index(  # dashboard: estornos concluídos por período
+                fields=["organization", "completed_at"],
+                condition=Q(status=RefundStatus.SUCCEEDED),
+                name="payments_org_refunded_idx",
             ),
         ]
 

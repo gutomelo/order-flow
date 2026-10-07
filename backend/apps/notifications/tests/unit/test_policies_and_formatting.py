@@ -51,7 +51,7 @@ def test_formats_money_in_brazilian_portuguese(value: str, text: str) -> None:
     assert money(Decimal(value)) == text
 
 
-@override_settings(NOTIFICATIONS_TIME_ZONE="America/Sao_Paulo")
+@override_settings(BUSINESS_TIME_ZONE="America/Sao_Paulo")
 def test_formats_dates_in_the_configured_time_zone() -> None:
     assert local_datetime(datetime(2026, 10, 8, 15, 30, tzinfo=UTC)) == "08/10/2026 às 12:30"
 

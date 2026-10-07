@@ -4,7 +4,7 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 10 — Notifications concluída; próxima: Phase 11 — Dashboard.** Existem a
+**Fase atual: Phase 11 — Dashboard concluída; próxima: Phase 12 — Audit.** Existem a
 fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT, convite e redefinição de
 senha por e-mail), `customers` (clientes, segmentos, endereços e contatos), `suppliers`, `catalog`
 (produtos e categorias), `inventory` (depósitos, saldos, recebimentos, ajustes, transferências, o
@@ -12,8 +12,9 @@ ledger de movimentações e alerta de estoque baixo), `pricing` (tabela padrão 
 `orders` (rascunho → `PENDING`, cancelamento, numeração, idempotência, reserva de estoque com
 expiração, pagamento, cancelamento de pago com estorno, separação, despacho e entrega),
 `payments` (cartão via `PaymentGateway` fake, baixa manual, estornos, reconciliação), `shipping`
-(remessa via `ShippingProvider` fake, rastreio, entrega manual) e `notifications` (e-mails a
-partir de eventos, Mailpit em dev). Eventos de negócio usam o Transactional Outbox de
+(remessa via `ShippingProvider` fake, rastreio, entrega manual), `notifications` (e-mails a
+partir de eventos, Mailpit em dev) e `dashboard` (indicadores somente leitura, cache por TTL —
+ADR-014). Eventos de negócio usam o Transactional Outbox de
 `shared/events` (ADR-011). Devolução pós-entrega ainda não existe. Não crie models, endpoints ou
 telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).
@@ -40,7 +41,7 @@ view de negócio usa `TenantScopedQuerysetMixin`; o tenant vem sempre de `reques
 - Camadas por módulo, **somente quando a complexidade justificar**:
   `api/` → `application/` → `domain/` ← `infrastructure/`. Módulos simples usam Django idiomático.
 - Módulos: `identity`, `customers`, `suppliers`, `catalog`, `inventory`, `orders`, `pricing`,
-  `payments`, `shipping`, `notifications`, `audit`. Código transversal em `backend/shared/`.
+  `payments`, `shipping`, `notifications`, `dashboard`, `audit`. Código transversal em `backend/shared/`.
 - Comunicação entre módulos: chamadas à camada `application` do outro módulo (síncrono) ou
   Domain Events (desacoplado). **Nunca** escrever em models de outro módulo diretamente.
 - Efeitos secundários (e-mail, notificações, auditoria assíncrona) rodam após o commit, via Celery.

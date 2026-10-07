@@ -40,6 +40,10 @@
 
   --color-focus-ring: #2563eb;
 
+  /* Gráficos: série única (validada: contraste >= 3:1 com a superfície) e grade discreta. */
+  --color-chart-bar: #2563eb;
+  --color-chart-grid: #e2e8f0;
+
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -63,6 +67,8 @@
   --color-danger: #f87171;
   --color-info: #38bdf8;
   --color-focus-ring: #60a5fa;
+  --color-chart-bar: #3b82f6;
+  --color-chart-grid: #1e293b;
 }
 
 /* Tema "sistema": segue o sistema operacional, salvo escolha explícita de tema claro. */
@@ -86,5 +92,7 @@
     --color-danger: #f87171;
     --color-info: #38bdf8;
     --color-focus-ring: #60a5fa;
+    --color-chart-bar: #3b82f6;
+    --color-chart-grid: #1e293b;
   }
 }

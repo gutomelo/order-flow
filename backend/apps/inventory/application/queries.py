@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
+from django.db.models import F
+
 from apps.inventory.models import StockItem, Warehouse
 
 
@@ -66,4 +68,13 @@ def get_stock_item_view(organization_id: UUID, stock_item_id: UUID) -> StockItem
         warehouse_name=item.warehouse.name,
         available=item.available,
         reorder_point=item.reorder_point,
+    )
+
+
+def low_stock_count(organization_id: UUID) -> int:
+    """Itens no ponto de reposição ou abaixo (mesma regra do filtro "estoque baixo" da tela)."""
+    return (
+        StockItem.objects.for_organization(organization_id)
+        .filter(reorder_point__gt=0, available__lte=F("reorder_point"))
+        .count()
     )

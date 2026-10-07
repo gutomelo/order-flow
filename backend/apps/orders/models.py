@@ -110,6 +110,12 @@ class Order(TenantScopedModel):
             models.Index(fields=["organization", "status"], name="orders_org_status_idx"),
             models.Index(fields=["organization", "customer"], name="orders_org_customer_idx"),
             models.Index(fields=["organization", "-created_at"], name="orders_org_created_idx"),
+            # Dashboard: pedidos enviados por período e os mais recentes (medição em dashboard.md).
+            models.Index(
+                fields=["organization", "-submitted_at"],
+                condition=Q(submitted_at__isnull=False),
+                name="orders_org_submitted_idx",
+            ),
             # Job de expiração: só os pedidos aguardando pagamento, pelo prazo.
             models.Index(
                 fields=["payment_due_at"],

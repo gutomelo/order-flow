@@ -179,6 +179,7 @@ modules = [
     "apps.orders.api",
     "apps.payments.api",
     "apps.notifications.api",
+    "apps.dashboard.api",
 ]
 
 [[tool.importlinter.contracts]]
@@ -302,6 +303,7 @@ source_modules = [
     "apps.orders",
     "apps.payments",
     "apps.shipping",
+    "apps.dashboard",
 ]
 forbidden_modules = ["apps.notifications"]
 
@@ -325,3 +327,46 @@ forbidden_modules = [
     "apps.shipping.models",
     "apps.payments",
 ]
+
+[[tool.importlinter.contracts]]
+name = "dashboard: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.dashboard.api",
+    "apps.dashboard.application",
+    "apps.dashboard.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "dashboard só lê: camada pública dos outros módulos, e ninguém depende dele"
+type = "forbidden"
+source_modules = ["apps.dashboard"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.payments.models",
+    "apps.payments.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.notifications",
+]
+allow_indirect_imports = true
+# Testes de integração preparam cenários com os models dos outros módulos (só setup de dados).
+ignore_imports = ["apps.dashboard.tests.** -> apps.**"]
+
+[[tool.importlinter.contracts]]
+name = "nenhum módulo de negócio depende do dashboard"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+    "apps.notifications",
+]
+forbidden_modules = ["apps.dashboard"]

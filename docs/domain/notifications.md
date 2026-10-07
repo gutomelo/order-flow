@@ -83,7 +83,7 @@ pendente parado há 10 min (enfileiramento perdido) → maintenance.requeue_stal
   `locmem` nos testes, console como padrão seguro. O roadmap previa um `EmailProvider`/
   `ConsoleEmailProvider` próprios; o Django já oferece exatamente essa porta com adapters, então
   criar outra seria abstração sem problema novo (ver `docs/architecture/backend.md`).
-- Datas no fuso `NOTIFICATIONS_TIME_ZONE` (America/Sao_Paulo) e dinheiro em pt-BR
+- Datas no fuso `BUSINESS_TIME_ZONE` (America/Sao_Paulo) e dinheiro em pt-BR
   (`application/formatting.py`): o e-mail não tem o fuso nem o locale de um navegador.
 
 ## Casos de uso / API

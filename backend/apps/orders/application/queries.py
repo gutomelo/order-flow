@@ -4,7 +4,13 @@ por outros módulos (notificações) sem expor models."""
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo
+
+from django.conf import settings
+from django.db.models import Count
+from django.db.models.functions import TruncDay, TruncHour
 
 from apps.orders.application import resolution
 from apps.orders.domain.lines import (
@@ -80,3 +86,88 @@ def get_order_view(organization_id: UUID, order_id: UUID) -> OrderView | None:
             OrderLineView(line.sku, line.product_name, line.quantity) for line in order.lines.all()
         ],
     )
+
+
+# Leituras agregadas para o dashboard ------------------------------------------------------------
+
+Bucket = Literal["hour", "day"]
+
+# Pedidos em andamento (o "funil" atual): do envio até a entrega.
+OPEN_STATUSES = (
+    "PENDING",
+    "AWAITING_PAYMENT",
+    "PAID",
+    "PROCESSING",
+    "READY_TO_SHIP",
+    "SHIPPED",
+)
+
+
+def _trunc(bucket: Bucket, field: str) -> TruncDay | TruncHour:
+    """Dia/hora no fuso do negócio: "hoje" começa à meia-noite de São Paulo, não de UTC."""
+    tz = ZoneInfo(settings.BUSINESS_TIME_ZONE)
+    return TruncHour(field, tzinfo=tz) if bucket == "hour" else TruncDay(field, tzinfo=tz)
+
+
+def submitted_orders_by_bucket(
+    organization_id: UUID, start: datetime, end: datetime, bucket: Bucket
+) -> dict[datetime, int]:
+    """Pedidos enviados (`submitted_at`) por hora/dia em [start, end). Rascunhos não contam."""
+    rows = (
+        Order.objects.for_organization(organization_id)
+        .filter(submitted_at__gte=start, submitted_at__lt=end)
+        .annotate(slot=_trunc(bucket, "submitted_at"))
+        .values("slot")
+        .annotate(total=Count("id"))
+    )
+    return {row["slot"]: row["total"] for row in rows}
+
+
+def count_submitted_orders(organization_id: UUID, start: datetime, end: datetime) -> int:
+    return (
+        Order.objects.for_organization(organization_id)
+        .filter(submitted_at__gte=start, submitted_at__lt=end)
+        .count()
+    )
+
+
+def open_orders_by_status(organization_id: UUID) -> dict[str, int]:
+    """Retrato atual do funil (não depende do período): quantos pedidos em cada etapa."""
+    rows = (
+        Order.objects.for_organization(organization_id)
+        .filter(status__in=OPEN_STATUSES)
+        .values("status")
+        .annotate(total=Count("id"))
+    )
+    found = {row["status"]: row["total"] for row in rows}
+    return {status: found.get(status, 0) for status in OPEN_STATUSES}
+
+
+@dataclass(frozen=True)
+class RecentOrder:
+    id: UUID
+    reference: str
+    customer_name: str
+    status: str
+    total: Decimal
+    submitted_at: datetime
+
+
+def recent_orders(organization_id: UUID, limit: int = 5) -> list[RecentOrder]:
+    orders = (
+        Order.objects.for_organization(organization_id)
+        .filter(submitted_at__isnull=False)
+        .select_related("customer")
+        .order_by("-submitted_at")[:limit]
+    )
+    return [
+        RecentOrder(
+            order.id,
+            order_reference(order),
+            order.customer.display_name,
+            order.status,
+            order.total,
+            order.submitted_at,  # type: ignore[arg-type]  # filtrado acima
+        )
+        for order in orders
+    ]

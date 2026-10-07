@@ -14,6 +14,7 @@ código e documento é um defeito (de um dos dois). Atualize o documento no mesm
 | [orders.md](orders.md) | Ciclo de vida do pedido, máquina de estados, totais, cancelamento, devolução | Vigente |
 | [inventory.md](inventory.md) | Saldo, reservas, movimentações, concorrência, expiração | Vigente |
 | [shipping.md](shipping.md) | Remessa, etiqueta e rastreio da transportadora, entrega manual | Vigente |
+| [dashboard.md](dashboard.md) | Indicadores (pedidos, funil, faturamento líquido, estoque baixo), períodos, cache | Vigente |
 | [notifications.md](notifications.md) | Avisos por e-mail a partir de eventos, destinatários, envio com retry e histórico | Vigente |
 | [payments.md](payments.md) | Cobrança por cartão (gateway) e baixa manual, estornos, reconciliação, eventos | Vigente |
 

@@ -14,5 +14,5 @@ def money(value: Decimal, currency: str = "BRL") -> str:
 
 
 def local_datetime(value: datetime) -> str:
-    local = value.astimezone(ZoneInfo(settings.NOTIFICATIONS_TIME_ZONE))
+    local = value.astimezone(ZoneInfo(settings.BUSINESS_TIME_ZONE))
     return local.strftime("%d/%m/%Y às %H:%M")

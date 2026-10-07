@@ -4,9 +4,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from apps.payments.domain.status import PaymentStatus
-from apps.payments.models import Payment
+from django.conf import settings
+from django.db.models import Count, QuerySet, Sum
+from django.db.models.functions import TruncDay, TruncHour
+
+from apps.payments.domain.status import PaymentStatus, RefundStatus
+from apps.payments.models import Payment, Refund
 
 
 @dataclass(frozen=True)
@@ -77,3 +82,69 @@ def approved_payment_id(organization_id: UUID, order_id: UUID) -> UUID | None:
         .values_list("id", flat=True)
         .first()
     )
+
+
+# Leituras agregadas para o dashboard (faturamento = aprovado - estornado, docs/domain/payments.md)
+
+
+@dataclass(frozen=True)
+class RevenueTotals:
+    approved: Decimal  # soma dos pagamentos aprovados (pela data de aprovação)
+    refunded: Decimal  # soma dos estornos concluídos (pela data de conclusão)
+    approved_count: int
+
+    @property
+    def net(self) -> Decimal:
+        return self.approved - self.refunded
+
+
+def _approved(organization_id: UUID, start: datetime, end: datetime) -> QuerySet[Payment]:
+    # REFUNDED também foi dinheiro que entrou naquela data; o estorno sai na data dele.
+    return Payment.objects.for_organization(organization_id).filter(
+        status__in=[PaymentStatus.APPROVED, PaymentStatus.REFUNDED],
+        completed_at__gte=start,
+        completed_at__lt=end,
+    )
+
+
+def _refunded(organization_id: UUID, start: datetime, end: datetime) -> QuerySet[Refund]:
+    return Refund.objects.for_organization(organization_id).filter(
+        status=RefundStatus.SUCCEEDED, completed_at__gte=start, completed_at__lt=end
+    )
+
+
+def revenue_totals(organization_id: UUID, start: datetime, end: datetime) -> RevenueTotals:
+    approved = _approved(organization_id, start, end).aggregate(total=Sum("amount"), n=Count("id"))
+    refunded = _refunded(organization_id, start, end).aggregate(total=Sum("amount"))
+    return RevenueTotals(
+        approved=approved["total"] or Decimal("0"),
+        refunded=refunded["total"] or Decimal("0"),
+        approved_count=approved["n"],
+    )
+
+
+def net_revenue_by_bucket(
+    organization_id: UUID, start: datetime, end: datetime, bucket: str
+) -> dict[datetime, Decimal]:
+    """Aprovado - estornado por hora/dia (fuso do negócio) em [start, end)."""
+    tz = ZoneInfo(settings.BUSINESS_TIME_ZONE)
+
+    def trunc(field: str) -> TruncDay | TruncHour:
+        return TruncHour(field, tzinfo=tz) if bucket == "hour" else TruncDay(field, tzinfo=tz)
+
+    series: dict[datetime, Decimal] = {}
+    for row in (
+        _approved(organization_id, start, end)
+        .annotate(slot=trunc("completed_at"))
+        .values("slot")
+        .annotate(total=Sum("amount"))
+    ):
+        series[row["slot"]] = series.get(row["slot"], Decimal("0")) + row["total"]
+    for row in (
+        _refunded(organization_id, start, end)
+        .annotate(slot=trunc("completed_at"))
+        .values("slot")
+        .annotate(total=Sum("amount"))
+    ):
+        series[row["slot"]] = series.get(row["slot"], Decimal("0")) - row["total"]
+    return series

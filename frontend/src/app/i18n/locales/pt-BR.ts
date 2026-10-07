@@ -1057,11 +1057,55 @@ export default {
   },
   dashboard: {
     title: 'Dashboard',
-    description: 'Visão geral do negócio.',
-    empty: {
-      title: 'Ainda não há indicadores para exibir',
-      description:
-        'Pedidos, faturamento e alertas de estoque aparecerão aqui assim que os primeiros pedidos forem registrados.',
+    description: 'O que está acontecendo no negócio.',
+    updatedAt: 'Atualizado às {time} · os números podem ter até 1 minuto de atraso',
+    periods: {
+      label: 'Período',
+      today: 'Hoje',
+      '7d': 'Últimos 7 dias',
+      '30d': 'Últimos 30 dias',
+      previous: {
+        today: 'ontem até esta hora',
+        '7d': 'os 7 dias anteriores',
+        '30d': 'os 30 dias anteriores',
+      },
+    },
+    delta: {
+      change: '{change} vs {period}',
+      same: 'sem variação vs {period}',
+      noBase: {
+        today: 'sem comparação: nada ontem até esta hora',
+        '7d': 'sem comparação: nada nos 7 dias anteriores',
+        '30d': 'sem comparação: nada nos 30 dias anteriores',
+      },
+      noData: 'sem dados no período',
+    },
+    tiles: {
+      orders: 'Pedidos recebidos',
+      revenue: 'Faturamento líquido',
+      averageTicket: 'Ticket médio',
+      refunded: 'Estornos',
+      lowStock: 'Itens com estoque baixo',
+      lowStockLink: 'Ver itens',
+    },
+    chart: {
+      revenueTitle: 'Faturamento líquido no período',
+      ordersTitle: 'Pedidos recebidos no período',
+      revenue: 'Faturamento líquido',
+      orders: 'Pedidos',
+      slot: 'Período',
+      revenueNote: 'Pagamentos aprovados menos estornos concluídos, pela data em que aconteceram.',
+      showTable: 'Ver dados em tabela',
+      keyboardHint: 'Use as setas para percorrer as barras.',
+    },
+    pipeline: {
+      title: 'Pedidos em andamento',
+      description: 'Situação atual, independente do período.',
+    },
+    recent: {
+      title: 'Pedidos recentes',
+      all: 'Ver todos',
+      empty: 'Nenhum pedido recebido ainda.',
     },
     health: {
       title: 'Status do sistema',

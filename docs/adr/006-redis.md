@@ -26,6 +26,9 @@ Usar **Redis** para:
 - chaves de idempotência (persistidas no PostgreSQL na mesma transação do efeito, ADR-012);
 - broker do Celery (RabbitMQ, ADR-005).
 
+Exceção aprovada: agregados do dashboard (inclusive faturamento) com TTL de 60 s e sem
+invalidação por evento — ver [ADR-014](014-dashboard-aggregate-cache.md).
+
 Toda entrada de cache tem chave versionada por módulo (`catalog:v1:product:<id>`), TTL explícito e
 invalidação no use case que altera o dado (após o commit).
 

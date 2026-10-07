@@ -103,6 +103,10 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Destinatário do pedido | `get_notification_recipient` | Contato principal com e-mail; sem ele, o e-mail do cadastro do cliente |
 | Convite | `UserInvited` / `invitation_pending` | Usuário criado sem senha que recebe um link para defini-la |
 | Redefinição de senha | `PasswordResetRequested` / `reset_password` | "Esqueci minha senha": link de uso único por e-mail |
+| Faturamento líquido | `RevenueTotals.net` | Pagamentos aprovados menos estornos concluídos no período, cada um na sua data |
+| Ticket médio | `average_ticket` | Aprovado ÷ número de pagamentos aprovados no período |
+| Funil (pedidos em andamento) | `open_orders_by_status` | Quantos pedidos em cada etapa agora, de `PENDING` a `SHIPPED` |
+| Fuso do negócio | `BUSINESS_TIME_ZONE` | Onde começa "hoje" e o dia dos gráficos e e-mails (America/Sao_Paulo) |
 | Estoque baixo | `inventory.stock.low` | Disponível cruzou o ponto de reposição para baixo |
 
 ## Técnico

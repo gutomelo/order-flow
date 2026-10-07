@@ -141,6 +141,16 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   pegavam: `password: null` recusado pelo serializer (o teste omitia o campo) e o erro sumindo no
   campo escondido; e o RabbitMQ bloqueado por disco cheio, que o outbox atravessou sem perder nada.
 
+- Phase 11: 12 mutações no backend (faturamento sem estornos, estornado fora do faturamento,
+  período anterior sem deslocar, dias em UTC, "hoje" começando em UTC, cache sem organização,
+  dinheiro não removido, estoque no ponto não contando, recentes invertidos, recusado como pago,
+  estoque para quem não lê estoque, série sem barras vazias) — todas detectadas, duas só depois de
+  ajustes: o helper do teste criava pagamento recusado **sem** data de conclusão (no sistema real a
+  recusa grava a data), escondendo o caso; e faltava um pedido às 22h para separar dia do negócio de
+  dia UTC. No frontend, 6 mutações detectadas. Medição de desempenho num banco descartável com
+  500 mil pedidos (ADR-014). O E2E achou: texto de variação reprovado em contraste (cor de status em
+  texto), frase sem sentido no "sem base" e rolagem horizontal no celular.
+
 ## Teste de concorrência — esqueleto
 
 ```python

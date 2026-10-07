@@ -267,11 +267,20 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Seção **Avisos ao cliente** no pedido, com e-mail mascarado; polling enquanto há envio pendente ou o pedido mudou há menos de 1 min | o aviso nasce pelo outbox segundos depois da mudança | polling contínuo |
 | Selo **Convite pendente** e "Reenviar convite" na lista de usuários | o admin precisa saber quem ainda não entrou | — |
 
-### Dashboard
+### Dashboard (Phase 11)
 
-Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos
-pendentes, produtos com estoque baixo), gráficos (vendas no período, pedidos por status) e tabela de
-pedidos recentes. Nada de gráficos sem pergunta de negócio associada.
+Responde "o que está acontecendo no negócio?" (`docs/domain/dashboard.md`). Decisões:
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Filtro de período (Hoje / 7 / 30 dias) numa linha acima de tudo, na URL | os números da página precisam concordar entre si | filtro por gráfico |
+| `BarChart` próprio em SVG: série única (sem legenda; o título nomeia), barras ≤ 24px com 4px arredondados na ponta, grade de 1px, tooltip no mouse **e** no teclado (setas), região `aria-live`, tabela equivalente em "Ver dados em tabela" | biblioteca de gráficos (~60–300 KB) para duas barras; acessibilidade por conta própria de qualquer jeito | Chart.js / ECharts |
+| Cores do gráfico em tokens (`--color-chart-bar`, `--color-chart-grid`) com variante escura, validadas (contraste ≥ 3:1 na superfície clara e escura) | gráfico com hexadecimal solto e sem modo escuro | reaproveitar `--color-primary` sem validar |
+| Variação: ícone colorido + texto em token de texto; cor diz se é bom (mais estorno = ruim); sem base = neutro | o verde de status tem 3,3:1 no branco — reprovado pelo Lighthouse **como texto** | texto colorido |
+| Rótulos das barras lidos da string do backend (fuso do negócio), sem `Date` | converter para o fuso do navegador mudaria o dia | `toLocaleDateString` |
+| Trocar o período mantém os números anteriores esmaecidos | sem pulo de layout nem esqueleto a cada clique | estado de loading |
+| `min-w-0` nos itens da grade | no celular a tabela de recentes alargava a página (rolagem horizontal, achado no E2E) | — |
+| Atualiza a cada 60 s e mostra "Atualizado às…" | mesmo TTL do cache do backend (ADR-014) | polling mais rápido |
 
 ## Acessibilidade e responsividade
 

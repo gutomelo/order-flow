@@ -59,6 +59,7 @@ Diagramas C4 completos: [../diagrams/c4-model.md](../diagrams/c4-model.md).
 | `payments` | Pagamentos, refunds, adapter de gateway | média/alta |
 | `shipping` | Remessas, rastreio, adapter de provedor | média |
 | `notifications` | E-mail/notificações a partir de eventos | baixa |
+| `dashboard` | Indicadores somente leitura (compõe orders, payments, inventory) | baixa |
 | `audit` | Registro imutável de operações relevantes | baixa/média |
 
 Fronteiras, donos de dados e dependências: [domain-model.md](domain-model.md).

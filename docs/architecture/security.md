@@ -170,6 +170,13 @@ recusado (`docs/domain/payments.md`).
   do erro do SMTP, não a mensagem (que traz o endereço). Histórico na tela com e-mail mascarado.
   Verificado no E2E: nenhum e-mail ou token nos logs do backend e do worker.
 
+## Dashboard (Phase 11)
+
+- Indicadores de dinheiro só com `reports:financial`; estoque baixo só com `inventory:read`.
+- O cache é por organização (nunca por usuário) e guarda tudo; a seção sem permissão é removida
+  **depois** de ler o cache. Teste: o vendedor nunca recebe a seção de dinheiro que um gerente
+  colocou no cache; outra organização nunca recebe números de outra.
+
 ## Revisão
 
 Toda mudança em auth, permissões, endpoints, serializers, settings ou dependências passa pela skill
