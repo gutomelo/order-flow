@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Tags,
   Truck,
+  PackageCheck,
   Users,
   UsersRound,
   Wallet,
@@ -29,6 +30,12 @@ export interface NavigationItem {
 export const primaryNavigation: NavigationItem[] = [
   { routeName: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { routeName: 'orders', labelKey: 'nav.orders', icon: ShoppingCart, permission: 'orders:read' },
+  {
+    routeName: 'fulfillment',
+    labelKey: 'nav.fulfillment',
+    icon: PackageCheck,
+    permission: 'orders:process',
+  },
   { routeName: 'payments', labelKey: 'nav.payments', icon: Wallet, permission: 'payments:read' },
   {
     routeName: 'customers',

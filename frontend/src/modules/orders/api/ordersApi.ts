@@ -18,6 +18,7 @@ export async function listOrders(filters: OrderFilters) {
   }
   if (filters.search) params.search = filters.search
   if (filters.status) params.status = filters.status
+  if (filters.ordering) params.ordering = filters.ordering
   const { data } = await http.get<Paginated<OrderSummary>>('/orders', { params })
   return data
 }
@@ -79,6 +80,19 @@ export async function recordPayment(id: string, reference: string, idempotencyKe
     { reference },
     { headers: { 'Idempotency-Key': idempotencyKey } },
   )
+  return data
+}
+
+/** Separação e envio (Phase 9): idempotentes por estado, sem corpo. */
+export type FulfillmentStep = 'start-picking' | 'complete-picking' | 'ship'
+
+export async function advanceFulfillment(id: string, step: FulfillmentStep) {
+  const { data } = await http.post<Order>(`/orders/${id}/${step}`)
+  return data
+}
+
+export async function confirmDelivery(id: string, note: string) {
+  const { data } = await http.post<Order>(`/orders/${id}/confirm-delivery`, { note })
   return data
 }
 

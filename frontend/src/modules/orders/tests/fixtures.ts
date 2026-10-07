@@ -73,6 +73,7 @@ export function buildOrder(overrides: Partial<Order> = {}): Order {
       },
     ],
     payments: [],
+    shipment: null,
     history: [
       {
         id: 'h-1',

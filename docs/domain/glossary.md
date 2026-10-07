@@ -90,7 +90,13 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Falhou | `PaymentStatus.FAILED` | Provedor nunca concluiu a cobrança; nada foi cobrado |
 | Reconciliação de pagamento | `reconcile_pending_payments` | Consulta ao provedor das cobranças sem resposta |
 | Outbox (caixa de saída) | `OutboxEvent` | Evento gravado na transação da mudança e entregue depois (ADR-011) |
-| Envio / remessa | `Shipment` | Despacho físico de um pedido |
+| Envio / remessa | `Shipment` | Despacho físico de um pedido (uma por pedido) |
+| Expedição | `fulfillment` | Separar, despachar e entregar pedidos pagos (tela e `application/fulfillment.py`) |
+| Separação | `picking` (`StartPicking`, `CompletePicking`) | Retirar e embalar os itens no depósito (`PROCESSING → READY_TO_SHIP`) |
+| Despachar | `ShipOrder` | Entregar à transportadora: gera etiqueta, baixa o estoque (`SALE`), pedido `SHIPPED` |
+| Etiqueta | `Label` | Transportadora + código de rastreio, devolvidos ao pedir a remessa |
+| Rastreio | `track_due_shipments` | Consulta periódica à transportadora das remessas em trânsito |
+| Confirmação manual de entrega | `ConfirmDelivery` (`DeliverySource.MANUAL`) | Entrega informada por uma pessoa (retirada, frota própria) |
 | Transportadora / provedor de frete | `ShippingProvider` | Porta para o provedor logístico (adapter) |
 | Código de rastreio | `tracking_code` | Identificador do envio no provedor |
 

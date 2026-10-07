@@ -148,6 +148,14 @@ recusado (`docs/domain/payments.md`).
 - Estornos (`payments:refund`) só para FINANCE e ADMIN; a listagem financeira exige
   `payments:read`. Tudo escopado por organização (anti-IDOR).
 
+## Expedição
+
+- Separar exige `orders:process`; despachar e confirmar entrega, `orders:ship` (ADMIN, MANAGER,
+  WAREHOUSE). Testado ação a ação com o pedido no estado em que ela valeria (SALES, FINANCE e
+  VIEWER recebem 403 em todas) e anti-IDOR (404 para pedido de outra organização).
+- A observação da entrega manual é texto livre limitado (200) e nunca vai para log; o log registra
+  só ids e a origem (`MANUAL`/`PROVIDER`).
+
 ## Revisão
 
 Toda mudança em auth, permissões, endpoints, serializers, settings ou dependências passa pela skill

@@ -16,6 +16,7 @@ from rest_framework.serializers import BaseSerializer
 from apps.identity.domain.permissions import Permission
 from apps.orders.api.serializers import (
     CancelSerializer,
+    ConfirmDeliverySerializer,
     DraftSerializer,
     ManualPaymentSerializer,
     OrderSerializer,
@@ -26,6 +27,7 @@ from apps.orders.api.serializers import (
     QuoteSerializer,
     SubmitSerializer,
 )
+from apps.orders.application import fulfillment
 from apps.orders.application.commands import (
     cancel_order,
     drafts,
@@ -56,6 +58,10 @@ _ACTION_PERMISSIONS: dict[str, Permission] = {
     "reserve": Permission.ORDERS_CREATE,
     "pay": Permission.PAYMENTS_CREATE,
     "record_payment": Permission.PAYMENTS_CREATE,
+    "start_picking": Permission.ORDERS_PROCESS,
+    "complete_picking": Permission.ORDERS_PROCESS,
+    "ship": Permission.ORDERS_SHIP,
+    "confirm_delivery": Permission.ORDERS_SHIP,
     # `cancel`: a permissão depende do estado (domain/policies.py), checada na ação.
 }
 
@@ -227,6 +233,43 @@ class OrderViewSet(
         serializer = CancelSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = cancel_order.cancel_order(
+            self.organization_id, self.actor_id, order.id, **serializer.validated_data
+        )
+        return self._respond(order)
+
+    @extend_schema(request=None, responses=OrderSerializer)
+    @action(detail=True, methods=["post"], url_path="start-picking")
+    def start_picking(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        return self._respond(
+            fulfillment.start_picking(self.organization_id, self.actor_id, order.id)
+        )
+
+    @extend_schema(request=None, responses=OrderSerializer)
+    @action(detail=True, methods=["post"], url_path="complete-picking")
+    def complete_picking(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        return self._respond(
+            fulfillment.complete_picking(self.organization_id, self.actor_id, order.id)
+        )
+
+    @extend_schema(
+        request=None,
+        responses=OrderSerializer,
+        description="503 SHIPPING_PROVIDER_UNAVAILABLE: nada mudou; despachar de novo é seguro.",
+    )
+    @action(detail=True, methods=["post"])
+    def ship(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        return self._respond(fulfillment.ship_order(self.organization_id, self.actor_id, order.id))
+
+    @extend_schema(request=ConfirmDeliverySerializer, responses=OrderSerializer)
+    @action(detail=True, methods=["post"], url_path="confirm-delivery")
+    def confirm_delivery(self, request: Request, pk: str | None = None) -> Response:
+        order = self.get_object()
+        serializer = ConfirmDeliverySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = fulfillment.confirm_delivery(
             self.organization_id, self.actor_id, order.id, **serializer.validated_data
         )
         return self._respond(order)

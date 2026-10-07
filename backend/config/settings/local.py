@@ -16,6 +16,9 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
     "rest_framework.renderers.BrowsableAPIRenderer",
 ]
 
+# Em dev, o rastreio consulta a transportadora simulada a cada minuto (entrega em minutos).
+SHIPMENT_TRACKING_INTERVAL_MINUTES = env.int("SHIPMENT_TRACKING_INTERVAL_MINUTES", default=1)
+
 # Desenvolvimento roda em HTTP: o cookie de refresh não pode exigir HTTPS.
 AUTH_REFRESH_COOKIE = {
     **AUTH_REFRESH_COOKIE,

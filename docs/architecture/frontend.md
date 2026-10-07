@@ -244,6 +244,18 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Página **Pagamentos** (`payments:read`) com "Tentar estorno de novo" (cartão `FAILED`) e "Confirmar estorno feito" (manual pendente), ambos com confirmação | o financeiro precisa de uma fila do que está travado | ações no detalhe do pedido |
 | Cancelar pedido pago oferecido só com `orders:cancel_paid`, com texto sobre o estorno | espelha a política do backend (`permission_to_cancel`) | mesmo botão para todos |
 
+### Decisões de implementação (Phase 9)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Tela **Expedição** (`/fulfillment`, `orders:process`) com uma aba por etapa, mais antigos primeiro (`ordering=submitted_at`) e o próximo passo na linha | o depósito trabalha por fila, não pedido a pedido | filtro de status na lista de pedidos |
+| `FulfillmentActionButton` único (fila e detalhe) decide o próximo passo pelo status (`NEXT_FULFILLMENT_ACTION`) e pela permissão | duas telas com a mesma regra divergiriam | botões soltos por página |
+| Separação em um clique; **despachar** e **confirmar entrega** com diálogo | o despacho baixa estoque e não pode ser desfeito; a entrega manual pede observação | confirmar tudo (atrito) ou nada (risco) |
+| Erro do despacho (`503`) **dentro** do diálogo | com o `<dialog>` modal, o toast fica atrás do backdrop | toast |
+| Botões da fila com o número do pedido para leitores de tela (`sr-only`) | a fila tinha vários "Iniciar separação" com o mesmo nome acessível (achado no E2E) | `aria-label` (substitui o texto visível) |
+| Status `SHIPPED` exibido como **Despachado** | "Enviado" já significa o envio do pedido (`submitted_at`); o histórico mostrava "Pronto para envio → Enviado" num pedido "Enviado em…" (achado no E2E) | manter "Enviado" |
+| Pedido em trânsito **sem** polling | a entrega leva dias; o TanStack Query recarrega ao voltar o foco para a aba | polling de horas |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

@@ -21,6 +21,12 @@ export const ordersRoutes: RouteRecordRaw[] = [
     meta: { titleKey: 'orders.editor.editTitle', permission: 'orders:create' },
   },
   {
+    path: 'fulfillment',
+    name: 'fulfillment',
+    component: () => import('@/modules/orders/pages/FulfillmentPage.vue'),
+    meta: { titleKey: 'orders.fulfillment.queue.title', permission: 'orders:process' },
+  },
+  {
     path: 'orders/:id',
     name: 'order-detail',
     component: () => import('@/modules/orders/pages/OrderDetailPage.vue'),

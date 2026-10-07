@@ -34,6 +34,7 @@ flowchart LR
     payments -. eventos .-> notifications
     shipping -. eventos .-> notifications
     payments -. payment.approved / payment.refunded .-> orders
+    shipping -. shipment.delivered .-> orders
 ```
 
 Setas sólidas: chamada síncrona à camada `application` do módulo de destino.
@@ -58,7 +59,7 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | `inventory` | `Warehouse`, `StockItem`, `StockReservation`, `StockMovement` | `ReserveStock`, `ReleaseReservation`, `ConfirmReservation`, `ConsumeReservation` |
 | `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderNumberSequence` (`OrderReturn`: Phase 9) | use cases do pedido |
 | `payments` | `Payment`, `Refund` | `create_pending_card_payment`, `execute_charge`, `record_manual_payment`, `request_refund`, `retry_refund`, `confirm_manual_refund`; queries `payments_for_order`, `has_payment_in_flight` |
-| `shipping` | `Shipment` | `CreateShipment` |
+| `shipping` | `Shipment` | `request_label`, `record_shipment`, `confirm_delivery`; query `shipment_for_order`; job `track_due_shipments` |
 | `notifications` | `NotificationLog` | — (reage a eventos) |
 | `audit` | `AuditLog` | `record(...)` usado por handlers |
 | `shared` | `IdempotencyRecord`, `OutboxEvent`, `ProcessedEvent` (ADR-011) | infraestrutura |

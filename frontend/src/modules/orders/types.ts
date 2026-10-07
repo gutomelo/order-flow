@@ -88,6 +88,17 @@ export interface OrderPayment {
   refunds: OrderRefund[]
 }
 
+export interface OrderShipment {
+  id: string
+  carrier: string
+  tracking_code: string
+  status: 'IN_TRANSIT' | 'DELIVERED'
+  shipped_at: string
+  delivered_at: string | null
+  delivery_source: '' | 'PROVIDER' | 'MANUAL'
+  delivery_note: string
+}
+
 export interface Order extends OrderSummary {
   warehouse: { id: string; code: string; name: string } | null
   shipping_address_id: string | null
@@ -100,12 +111,15 @@ export interface Order extends OrderSummary {
   lines: OrderLine[]
   history: OrderHistoryEntry[]
   payments: OrderPayment[]
+  shipment: OrderShipment | null
 }
 
 export interface OrderFilters {
   page: number
   search: string
   status: OrderStatus | ''
+  /** Fila da expedição: mais antigos primeiro (`submitted_at`). */
+  ordering?: 'submitted_at'
 }
 
 export interface LineInput {

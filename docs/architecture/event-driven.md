@@ -89,8 +89,9 @@ sensíveis. Consumidores que precisam de mais dados consultam o módulo dono pel
 | `payments.refund.requested` ✅ | payments | **payments** (executa o estorno no gateway, fora da transação de quem pediu) | outbox |
 | `payments.payment.refunded` ✅ | payments | **orders** (`CANCELLED → REFUNDED`) | outbox |
 | `PaymentFailed` | payments | notifications | outbox (Phase 10) |
+| `shipping.shipment.delivered` ✅ | shipping | **orders** (`SHIPPED → DELIVERED`) | outbox |
 
-✅ = implementado (Phase 8). Os demais são o planejado; nomes seguem `module.entity.action`.
+✅ = implementado (Phases 8 e 9). Os demais são o planejado; nomes seguem `module.entity.action`.
 
 Novos eventos: skill `create-domain-event` e atualização desta tabela.
 
@@ -124,10 +125,16 @@ gateway confirmar o refund.
 A UI comunica estados intermediários honestamente (ex.: "Reembolso solicitado" enquanto o pedido
 está `CANCELLED` aguardando `PaymentRefunded`).
 
-## Estado atual (Phase 8)
+## Estado atual (Phase 9)
 
-- `shared/events` com outbox (ADR-011 **Accepted**). Três eventos de `payments`, consumidos por
-  `orders` e pelo próprio `payments` (tabela acima).
+- `shared/events` com outbox (ADR-011 **Accepted**). Três eventos de `payments` e um de `shipping`,
+  consumidos por `orders` e pelo próprio `payments` (tabela acima).
+- O despacho é **síncrono** (`orders` chama `inventory` e `shipping` na mesma transação): baixa de
+  estoque, remessa e status mudam juntos. Só a entrega pelo rastreio chega por evento, porque
+  nasce num job do `shipping` que não conhece pedidos.
+- A confirmação manual de entrega não publica evento: `orders` já muda o pedido na mesma
+  transação. `OrderShipped`/`OrderDelivered` entram quando houver consumidor (notificações,
+  Phase 10).
 - A reserva de estoque continua **síncrona** (`orders` chama `inventory.application`): precisa
   de resposta imediata (tem ou não tem estoque), então não é evento.
 - Na UI, o atraso do relay (até 5 s) aparece como estado intermediário honesto: a tela do pedido

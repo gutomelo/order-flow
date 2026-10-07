@@ -100,6 +100,16 @@ export const usePlaceOrder = () =>
       api.placeOrder(input.data, input.key),
   )
 
+export const useAdvanceFulfillment = () =>
+  useOrdersMutation((input: { id: string; step: api.FulfillmentStep }) =>
+    api.advanceFulfillment(input.id, input.step),
+  )
+
+export const useConfirmDelivery = () =>
+  useOrdersMutation((input: { id: string; note: string }) =>
+    api.confirmDelivery(input.id, input.note),
+  )
+
 export const usePayOrder = () =>
   useOrdersMutation((input: { id: string; cardToken: string; key: string }) =>
     api.payOrder(input.id, input.cardToken, input.key),

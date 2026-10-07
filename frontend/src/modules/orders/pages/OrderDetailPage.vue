@@ -11,6 +11,7 @@ import { useApiErrorMessage } from '@/composables/useApiErrorMessage'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { formatPostalCode } from '@/modules/customers/addresses'
 import CancelOrderDialog from '@/modules/orders/components/CancelOrderDialog.vue'
+import OrderFulfillmentPanel from '@/modules/orders/components/OrderFulfillmentPanel.vue'
 import OrderPaymentPanel from '@/modules/orders/components/OrderPaymentPanel.vue'
 import OrderStatusBadge from '@/modules/orders/components/OrderStatusBadge.vue'
 import OrderTotals from '@/modules/orders/components/OrderTotals.vue'
@@ -51,6 +52,8 @@ const canCancel = computed(() =>
     ? session.can('orders:cancel_paid')
     : session.can('orders:cancel') && CANCELLABLE.has(order.value?.status ?? ''),
 )
+const IN_FULFILLMENT = new Set(['PAID', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'])
+const showFulfillment = computed(() => IN_FULFILLMENT.has(order.value?.status ?? ''))
 const showPayments = computed(
   () => order.value?.status === 'AWAITING_PAYMENT' || Boolean(order.value?.payments.length),
 )
@@ -370,6 +373,7 @@ const cancelOpen = ref(false)
         </div>
 
         <aside class="flex h-fit flex-col gap-6">
+          <OrderFulfillmentPanel v-if="showFulfillment" :order="order" />
           <OrderPaymentPanel v-if="showPayments" :order="order" />
           <section
             aria-labelledby="order-summary-heading"

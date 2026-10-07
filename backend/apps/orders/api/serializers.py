@@ -6,6 +6,7 @@ from rest_framework import serializers
 from apps.orders.application.queries import Quote
 from apps.orders.models import Order, OrderLine, OrderStatusHistory
 from apps.payments.application.queries import payments_for_order
+from apps.shipping.application.queries import shipment_for_order
 from shared.domain.documents import format_cnpj
 
 
@@ -87,6 +88,7 @@ class OrderSerializer(OrderSummarySerializer):
     shipping = serializers.SerializerMethodField()
     created_by = serializers.SerializerMethodField()
     payments = serializers.SerializerMethodField()
+    shipment = serializers.SerializerMethodField()
     lines = OrderLineSerializer(many=True, read_only=True)
     history = StatusHistorySerializer(many=True, read_only=True)
 
@@ -104,6 +106,7 @@ class OrderSerializer(OrderSummarySerializer):
             "lines",
             "history",
             "payments",
+            "shipment",
         )
         read_only_fields = fields
 
@@ -157,6 +160,21 @@ class OrderSerializer(OrderSummarySerializer):
             }
             for p in payments_for_order(order.organization_id, order.id)
         ]
+
+    def get_shipment(self, order: Order) -> dict[str, Any] | None:
+        shipment = shipment_for_order(order.organization_id, order.id)
+        if shipment is None:
+            return None
+        return {
+            "id": str(shipment.id),
+            "carrier": shipment.carrier,
+            "tracking_code": shipment.tracking_code,
+            "status": shipment.status,
+            "shipped_at": shipment.shipped_at.isoformat(),
+            "delivered_at": shipment.delivered_at.isoformat() if shipment.delivered_at else None,
+            "delivery_source": shipment.delivery_source,
+            "delivery_note": shipment.delivery_note,
+        }
 
 
 class LineInputSerializer(serializers.Serializer[dict[str, Any]]):
@@ -253,3 +271,8 @@ class PaySerializer(serializers.Serializer[dict[str, Any]]):
 
 class ManualPaymentSerializer(serializers.Serializer[dict[str, Any]]):
     reference = serializers.CharField(max_length=100)
+
+
+class ConfirmDeliverySerializer(serializers.Serializer[dict[str, Any]]):
+    # Opcional: quem recebeu, como foi entregue (retirada no balcão, transportadora própria...).
+    note = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")

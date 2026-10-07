@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.inventory",
     "apps.pricing",
     "apps.payments",
+    "apps.shipping",
     "apps.orders",
 ]
 
@@ -220,6 +221,12 @@ ORDER_PENDING_MAX_AGE_DAYS = env.int("ORDER_PENDING_MAX_AGE_DAYS", default=7)
 PAYMENT_GATEWAY = env("PAYMENT_GATEWAY", default="fake")
 # Consultas ao provedor para cobranças sem resposta antes de marcá-las FAILED.
 PAYMENT_RECONCILIATION_MAX_ATTEMPTS = env.int("PAYMENT_RECONCILIATION_MAX_ATTEMPTS", default=10)
+# Transportadora (adapter). Só existe a simulada até integrar um provedor real.
+SHIPPING_PROVIDER = env("SHIPPING_PROVIDER", default="fake")
+# Intervalo entre consultas de rastreio de uma remessa em trânsito.
+SHIPMENT_TRACKING_INTERVAL_MINUTES = env.int("SHIPMENT_TRACKING_INTERVAL_MINUTES", default=60)
+# Só a transportadora simulada: minutos entre o despacho e a entrega.
+FAKE_SHIPPING_TRANSIT_MINUTES = env.int("FAKE_SHIPPING_TRANSIT_MINUTES", default=2)
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

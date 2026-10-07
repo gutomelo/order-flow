@@ -19,7 +19,7 @@ from apps.inventory.application.ledger import (
     lock_warehouses_for_movement,
     post_movement,
 )
-from apps.inventory.domain.exceptions import StockBusy
+from apps.inventory.domain.exceptions import ReservationNotConfirmed, StockBusy
 from apps.inventory.domain.movements import MovementType
 from apps.inventory.domain.reservations import (
     HOLDING,
@@ -161,7 +161,7 @@ def release_reservations(
 
 def confirm_reservations(organization_id: UUID, order_id: UUID) -> int:
     """Pagamento aprovado: ACTIVE → CONFIRMED (não expira mais). Saldo não muda — a unidade
-    continua reservada até o envio (`CONSUMED`, Phase 9)."""
+    continua reservada até o envio (`consume_reservations`)."""
     with transaction.atomic():
         reservations = list(
             StockReservation.objects.for_organization(organization_id)
@@ -174,4 +174,38 @@ def confirm_reservations(organization_id: UUID, order_id: UUID) -> int:
             reservation.status = ReservationStatus.CONFIRMED
             reservation.save(update_fields=["status", "updated_at"])
     logger.info("inventory.stock.confirmed", order_id=str(order_id), lines=len(reservations))
+    return len(reservations)
+
+
+def consume_reservations(organization_id: UUID, actor_id: UUID | None, order_id: UUID) -> int:
+    """Envio do pedido: CONFIRMED → CONSUMED com movimento `SALE` (`on_hand` e `reserved` menos q).
+
+    A unidade sai do depósito e deixa de estar reservada no mesmo movimento: `available` não muda
+    (já não estava disponível desde a reserva). Ordem de locks: itens (por id) → reservas.
+    """
+    with transaction.atomic():
+        confirmed = StockReservation.objects.for_organization(organization_id).filter(
+            order_id=order_id, status=ReservationStatus.CONFIRMED
+        )
+        item_ids = set(confirmed.values_list("stock_item_id", flat=True))
+        if not item_ids:
+            raise ReservationNotConfirmed(details={"order_id": str(order_id)})
+        items = {item.id: item for item in lock_stock_items(organization_id, id__in=item_ids)}
+        reservations = list(confirmed.select_for_update().order_by("id"))
+        now = timezone.now()
+        for reservation in reservations:
+            assert_reservation_transition(ReservationStatus.CONFIRMED, ReservationStatus.CONSUMED)
+            post_movement(
+                items[reservation.stock_item_id],
+                MovementType.SALE,
+                on_hand_delta=-reservation.quantity,
+                reserved_delta=-reservation.quantity,
+                actor_id=actor_id,
+                reference_type=REFERENCE_TYPE,
+                reference_id=order_id,
+            )
+            reservation.status = ReservationStatus.CONSUMED
+            reservation.closed_at = now
+            reservation.save(update_fields=["status", "closed_at", "updated_at"])
+    logger.info("inventory.stock.consumed", order_id=str(order_id), lines=len(reservations))
     return len(reservations)

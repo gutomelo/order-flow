@@ -1,6 +1,8 @@
 # Domínio: Orders (Pedidos)
 
-> Fonte da verdade das regras de pedidos. Phase 8 acrescentou o pagamento (cartão via gateway e
+> Fonte da verdade das regras de pedidos. Phase 9 acrescentou separação, despacho (baixa do
+> estoque + remessa) e entrega pelo rastreio ou manual — ver [Phase 9](#implementação-phase-9).
+> Phase 8 acrescentou o pagamento (cartão via gateway e
 > baixa manual), o cancelamento de pedido pago com estorno e `CANCELLED → REFUNDED` — ver
 > [Phase 8](#implementação-phase-8). Phase 7 acrescentou a reserva de estoque (envio →
 > `AWAITING_PAYMENT`, expiração, pedidos parados) — ver [Phase 7](#implementação-phase-7).
@@ -91,7 +93,7 @@ classDiagram
 | `PAID` | `PROCESSING` | `StartPicking` | Permissão `orders:process` |
 | `PROCESSING` | `READY_TO_SHIP` | `CompletePicking` | — |
 | `READY_TO_SHIP` | `SHIPPED` | `ShipOrder` | Reserva consumida (`SALE`); `Shipment` criado |
-| `SHIPPED` | `DELIVERED` | `ConfirmDelivery` | Confirmação do provedor ou manual |
+| `SHIPPED` | `DELIVERED` | `ConfirmDelivery` / `MarkOrderDelivered` | Confirmação manual ou rastreio da transportadora (evento) |
 | `DRAFT`, `PENDING`, `AWAITING_PAYMENT` | `CANCELLED` | `CancelOrder` | Libera reserva se houver; motivo obrigatório |
 | `PAID`, `PROCESSING`, `READY_TO_SHIP` | `CANCELLED` | `CancelOrder` | Libera reserva **e** solicita refund total; permissão `orders:cancel_paid` |
 | `CANCELLED` | `REFUNDED` | `MarkOrderRefunded` | Somente se houve pagamento aprovado; ao receber `PaymentRefunded` |
@@ -169,8 +171,9 @@ Arredondamento: valores monetários com 2 casas, `ROUND_HALF_UP`, aplicados por 
 | `MarkOrderRefunded` | evento `payments.payment.refunded` | sistema | por estado | — |
 | `StartPicking` | `POST /api/v1/orders/{id}/start-picking` | `orders:process` | por estado | `OrderStatusChanged` |
 | `CompletePicking` | `POST /api/v1/orders/{id}/complete-picking` | `orders:process` | por estado | `OrderStatusChanged` |
-| `ShipOrder` | `POST /api/v1/orders/{id}/ship` | `orders:ship` | por estado | `OrderShipped` |
-| `ConfirmDelivery` | `POST /api/v1/orders/{id}/deliver` | `orders:ship` | por estado | `OrderDelivered` |
+| `ShipOrder` | `POST /api/v1/orders/{id}/ship` | `orders:ship` | por estado | — |
+| `ConfirmDelivery` | `POST /api/v1/orders/{id}/confirm-delivery` | `orders:ship` | por estado | — |
+| `MarkOrderDelivered` | evento `shipping.shipment.delivered` | sistema | por estado | — |
 | `ExpireUnpaidOrder` | Celery Beat | sistema | por estado | `StockReservationExpired` |
 | `CancelStalePendingOrders` | Celery Beat | sistema | por estado | `OrderCancelled` |
 
@@ -242,6 +245,22 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 | `OrderStatusChanged` | qualquer transição | `order_id`, `from`, `to`, `changed_by` | audit |
 | `OrderShipped` | pedido → `SHIPPED` | `order_id`, `shipment_id`, `tracking_code` | notifications, audit |
 | `OrderDelivered` | pedido → `DELIVERED` | `order_id`, `delivered_at` | notifications, audit |
+
+## Implementação (Phase 9)
+
+| Peça | Onde | O que faz |
+| --- | --- | --- |
+| `start_picking` / `complete_picking` | `application/fulfillment.py` | `PAID → PROCESSING → READY_TO_SHIP`, idempotentes por estado |
+| `ship_order` | idem | etiqueta na transportadora **sem lock**; depois, numa transação: `inventory.consume_reservations` (`SALE`) + `shipping.record_shipment` + `SHIPPED` |
+| `confirm_delivery` | idem | entrega manual com observação opcional (vira o motivo no histórico) |
+| `mark_order_delivered` | idem + `handlers.py` | `SHIPPED → DELIVERED` ao receber `shipping.shipment.delivered`; outro estado: nada |
+
+- **Ordem de locks no despacho:** pedido → itens de estoque → reservas → remessa (a mesma da
+  liberação, ADR-008).
+- **Depois do despacho não há cancelamento** (já estava na máquina de estados); devolução fica
+  para uma fase futura. `PROCESSING` e `READY_TO_SHIP` continuam canceláveis com estorno
+  (Phase 8), liberando a reserva `CONFIRMED`.
+- Regras e casos de borda do envio: [`shipping.md`](shipping.md).
 
 ## Implementação (Phase 8)
 
@@ -367,6 +386,8 @@ use cases, a tabela não muda.
 | `ORDER_NOT_AWAITING_PAYMENT` | 409 | Pagamento em pedido fora de `AWAITING_PAYMENT` |
 | `PAYMENT_DECLINED` | 422 | Gateway recusou o pagamento (pedido segue `AWAITING_PAYMENT`) |
 | `PAYMENT_IN_PROGRESS` | 409 | Já há uma cobrança pendente para o pedido (`payments.md`, P2) |
+| `SHIPPING_PROVIDER_UNAVAILABLE` | 503 | Transportadora não respondeu no despacho; nada mudou (`shipping.md`) |
+| `RESERVATION_NOT_CONFIRMED` | 409 | Despacho sem reserva paga (defesa; inalcançável pelo fluxo normal) |
 | `IDEMPOTENCY_KEY_REQUIRED` / `_REUSED` / `_REQUEST_IN_PROGRESS` | 400 / 422 / 409 | ADR-012 |
 
 ## Questões em aberto

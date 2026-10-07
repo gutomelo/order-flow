@@ -2,8 +2,8 @@
 
 > Fonte da verdade das regras de estoque. Phase 4 implementou depósitos, saldo, movimentações,
 > recebimentos, ajustes e transferências; Phase 7, reservas, liberação, expiração (via `orders`),
-> disponibilidade para a tela e reconciliação. `CONFIRMED`/`CONSUMED` chegam com pagamento (8) e
-> envio (9).
+> disponibilidade para a tela e reconciliação; Phase 8, `CONFIRMED` no pagamento; Phase 9,
+> `CONSUMED` no despacho (`consume_reservations`: movimento `SALE`, `on_hand` e `reserved` −q).
 > Decisão de concorrência: [ADR-008](../adr/008-stock-concurrency-control.md).
 
 ## Responsabilidade
@@ -225,7 +225,7 @@ Resultado: exatamente um AWAITING_PAYMENT; o outro 409 INSUFFICIENT_STOCK
 | `ReserveStock` | orders (`PlaceOrder`, `ReserveOrderStock`) | — (interno) | `StockReserved` |
 | `ConfirmReservation` | orders (`PayOrder`) | — (interno) | — |
 | `ReleaseReservation` | orders (`CancelOrder`, `ExpireUnpaidOrder`) | — (interno) | `StockReleased` / `StockReservationExpired` |
-| `ConsumeReservation` | orders (`ShipOrder`) | — (interno) | `StockConsumed` |
+| `ConsumeReservation` (`consume_reservations`) | orders (`ShipOrder`) | — (interno) | — (sem consumidor ainda) |
 | `ReceiveStock` | API `POST /api/v1/inventory/receipts` | `inventory:update` | `StockReceived` |
 | `AdjustStock` | API `POST /api/v1/inventory/adjustments` | `inventory:adjust` | `StockAdjusted` |
 | `TransferStock` | API `POST /api/v1/inventory/transfers` | `inventory:update` | `StockTransferred` |

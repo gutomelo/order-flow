@@ -227,6 +227,7 @@ source_modules = [
     "apps.inventory",
     "apps.pricing",
     "apps.payments",
+    "apps.shipping",
 ]
 forbidden_modules = ["apps.orders"]
 
@@ -255,4 +256,25 @@ forbidden_modules = [
     "apps.catalog",
     "apps.inventory",
     "apps.pricing",
+]
+
+[[tool.importlinter.contracts]]
+name = "shipping: camadas application → domain"
+type = "layers"
+layers = [
+    "apps.shipping.application",
+    "apps.shipping.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "shipping não conhece outros módulos de negócio (recebe order_id opaco)"
+type = "forbidden"
+source_modules = ["apps.shipping"]
+forbidden_modules = [
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.payments",
 ]

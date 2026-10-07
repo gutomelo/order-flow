@@ -96,3 +96,10 @@ class ReservationNotActive(DomainError):
     code = "RESERVATION_NOT_ACTIVE"
     http_status = 409
     default_message = "A reserva já foi encerrada."
+
+
+class ReservationNotConfirmed(DomainError):
+    # Envio sem reserva paga: nunca deveria acontecer (pago ⇒ CONFIRMED); barra baixa sem reserva.
+    code = "RESERVATION_NOT_CONFIRMED"
+    http_status = 409
+    default_message = "O pedido não tem reserva de estoque confirmada para enviar."

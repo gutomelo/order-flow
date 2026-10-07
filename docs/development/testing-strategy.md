@@ -115,6 +115,19 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   atualizar entre a aprovação e a chegada do evento ao pedido, e "provedor indisponível" travava o
   pedido por horas (backoff aplicado a uma resposta definitiva).
 
+- Phase 9: sem a baixa de estoque no despacho, sem o re-check de `SHIPPED` na segunda transação
+  (o teste de concorrência pega), sem a checagem de transição depois da etiqueta (pedido
+  cancelado no meio), sem o evento do rastreio, sem marcar a remessa na entrega manual, com o
+  handler de entrega ignorando o estado e com erro de transportadora não tratado — cada um derruba
+  um teste. Três mutações passaram na primeira rodada: a idempotência do provedor fake (o código de
+  rastreio vem da chave, então só o relógio da entrega mostrava a diferença) e as permissões de
+  `ship`/`confirm-delivery` (a matriz parava os papéis negados na separação). Os testes foram
+  reescritos (relógio da entrega; cada ação negada no estado em que valeria) e passaram a pegar.
+  Uma mutação equivalente ficou documentada: o retorno antecipado do rastreio para remessa já
+  entregue só evita uma consulta — o re-check com lock garante o resultado. No frontend, ignorar a
+  permissão, despachar sem confirmar, não aparar a observação, fila sem ordenação, rota sem
+  permissão e erro do despacho fora do diálogo derrubam um teste cada.
+
 ## Teste de concorrência — esqueleto
 
 ```python

@@ -33,6 +33,12 @@ app.conf.beat_schedule = {
         "schedule": 60.0,
         "options": {"queue": "integrations"},
     },
+    # Rastreio: remessas em trânsito com consulta vencida (o intervalo fica na própria remessa).
+    "track-shipments": {
+        "task": "maintenance.track_shipments",
+        "schedule": 60.0,
+        "options": {"queue": "integrations"},
+    },
     "purge-published-events": {
         "task": "maintenance.purge_published_events",
         "schedule": crontab(minute=50, hour=4),
