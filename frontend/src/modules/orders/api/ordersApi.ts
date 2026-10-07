@@ -3,6 +3,7 @@ import type {
   LineInput,
   Order,
   OrderFilters,
+  OrderNotification,
   OrderSummary,
   Quote,
 } from '@/modules/orders/types'
@@ -93,6 +94,11 @@ export async function advanceFulfillment(id: string, step: FulfillmentStep) {
 
 export async function confirmDelivery(id: string, note: string) {
   const { data } = await http.post<Order>(`/orders/${id}/confirm-delivery`, { note })
+  return data
+}
+
+export async function listOrderNotifications(id: string) {
+  const { data } = await http.get<OrderNotification[]>(`/orders/${id}/notifications`)
   return data
 }
 

@@ -15,10 +15,12 @@ from uuid import UUID
 
 from django.db import connection
 
+from apps.inventory.domain.events import StockLevelLow
 from apps.inventory.domain.exceptions import WarehouseInactive, WarehouseNotFound
 from apps.inventory.domain.movements import MovementType
-from apps.inventory.domain.stock import StockBalance
+from apps.inventory.domain.stock import StockBalance, crossed_reorder_point
 from apps.inventory.models import StockItem, StockMovement
+from shared.events.bus import publish
 from shared.logging import get_request_id
 
 
@@ -82,13 +84,25 @@ def post_movement(
     reference_id: UUID | None = None,
     reason: str = "",
 ) -> StockMovement:
-    """Aplica o delta ao item (já bloqueado) e registra o movimento na mesma transação."""
-    balance = StockBalance(item.on_hand, item.reserved).apply(
-        on_hand_delta=on_hand_delta, reserved_delta=reserved_delta
-    )
+    """Aplica o delta ao item (já bloqueado) e registra o movimento na mesma transação.
+
+    Se o disponível cruza o ponto de reposição para baixo, publica `inventory.stock.low` na mesma
+    transação (outbox): rollback do movimento desfaz o aviso.
+    """
+    before = StockBalance(item.on_hand, item.reserved)
+    balance = before.apply(on_hand_delta=on_hand_delta, reserved_delta=reserved_delta)
     # Com a linha bloqueada, gravar o valor resultante é seguro e mantém `*_after` coerente.
     item.on_hand, item.reserved = balance.on_hand, balance.reserved
     item.save(update_fields=["on_hand", "reserved", "updated_at"])
+    if crossed_reorder_point(before.available, balance.available, item.reorder_point):
+        publish(
+            StockLevelLow(
+                organization_id=item.organization_id,
+                stock_item_id=item.id,
+                available=balance.available,
+                reorder_point=item.reorder_point,
+            )
+        )
     return StockMovement.objects.create(
         organization_id=item.organization_id,
         stock_item=item,

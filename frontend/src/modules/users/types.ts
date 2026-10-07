@@ -11,6 +11,8 @@ export interface User {
   is_active: boolean
   last_login: string | null
   date_joined: string
+  /** Criado por convite e ainda sem senha definida. */
+  invitation_pending: boolean
 }
 
 export interface Team {
@@ -31,7 +33,8 @@ export interface UserFilters {
 
 export interface CreateUserInput {
   email: string
-  password: string
+  /** `null` = convite por e-mail (a pessoa define a própria senha). */
+  password: string | null
   first_name: string
   last_name: string
   role: Role

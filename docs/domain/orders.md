@@ -239,12 +239,12 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 
 | Evento | Quando | Payload principal | Consumidores |
 | --- | --- | --- | --- |
-| `OrderCreated` | `PlaceOrder`/`SubmitOrder` concluído | `order_id`, `number`, `customer_id`, `total` | audit, notifications, analytics |
-| `OrderPaid` | pedido → `PAID` | `order_id`, `payment_id`, `amount` | audit, notifications |
-| `OrderCancelled` | pedido → `CANCELLED` | `order_id`, `previous_status`, `reason`, `refund_required` | audit, notifications |
-| `OrderStatusChanged` | qualquer transição | `order_id`, `from`, `to`, `changed_by` | audit |
-| `OrderShipped` | pedido → `SHIPPED` | `order_id`, `shipment_id`, `tracking_code` | notifications, audit |
-| `OrderDelivered` | pedido → `DELIVERED` | `order_id`, `delivered_at` | notifications, audit |
+| `orders.order.status_changed` ✅ | **toda** transição, publicada por `transition()` (o único caminho de mudança de status) na mesma transação | `organization_id`, `order_id`, `from_status`, `to_status` | notifications (Phase 10); audit (Phase 12) |
+
+Phase 10: em vez de um evento por transição (`OrderCreated`, `OrderPaid`, `OrderShipped`...), um
+evento genérico. Publicar em `transition()` garante que nenhuma transição fique sem evento (O9/O10)
+e cada consumidor decide o que lhe interessa (`notifications.domain.policies`). Detalhes do pedido
+vêm de `orders.application.queries.get_order_view` pelo id.
 
 ## Implementação (Phase 9)
 

@@ -12,6 +12,8 @@ api_v1_patterns: list[URLPattern | URLResolver] = [
     path("", include("apps.catalog.api.urls")),
     path("", include("apps.inventory.api.urls")),
     path("", include("apps.pricing.api.urls")),
+    # Antes de orders: `orders/{id}/notifications` é do módulo notifications.
+    path("", include("apps.notifications.api.urls")),
     path("", include("apps.orders.api.urls")),
     path("", include("apps.payments.api.urls")),
 ]

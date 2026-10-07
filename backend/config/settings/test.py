@@ -28,4 +28,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 CELERY_BROKER_URL = "memory://"
 
+# E-mails ficam em `django.core.mail.outbox` (sem rede).
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
 AUTH_REFRESH_COOKIE = {**AUTH_REFRESH_COOKIE, "secure": False}

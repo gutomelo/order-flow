@@ -61,6 +61,14 @@ export function useUpdateUser() {
   })
 }
 
+export function useResendInvitation() {
+  const invalidate = useInvalidateIdentity()
+  return useMutation({
+    mutationFn: (id: string) => usersApi.resendInvitation(id),
+    onSuccess: invalidate,
+  })
+}
+
 export function useSetUserActive() {
   const invalidate = useInvalidateIdentity()
   return useMutation({

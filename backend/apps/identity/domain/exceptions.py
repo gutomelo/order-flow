@@ -49,3 +49,22 @@ class UserNotFound(DomainError):
     code = "NOT_FOUND"
     http_status = 404
     default_message = "Recurso não encontrado."
+
+
+class InvalidPasswordResetToken(DomainError):
+    # Expirado, já usado (a senha mudou), adulterado ou de usuário inativo: uma resposta só.
+    code = "INVALID_PASSWORD_RESET_TOKEN"
+    http_status = 400
+    default_message = "Este link expirou ou já foi usado. Peça um novo."
+
+
+class WeakPassword(DomainError):
+    code = "WEAK_PASSWORD"
+    http_status = 422
+    default_message = "A senha não atende à política de segurança."
+
+
+class InvitationNotPending(DomainError):
+    code = "INVITATION_NOT_PENDING"
+    http_status = 409
+    default_message = "Este usuário já definiu a senha ou está inativo."

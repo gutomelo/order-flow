@@ -9,7 +9,7 @@ import {
 import AppLayout from '@/app/layouts/AppLayout.vue'
 import AuthLayout from '@/app/layouts/AuthLayout.vue'
 import { i18n } from '@/app/providers/i18n'
-import { authRoutes } from '@/modules/auth/routes'
+import { authRoutes, forgotPasswordRoutes, resetPasswordRoutes } from '@/modules/auth/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { customersRoutes } from '@/modules/customers/routes'
@@ -38,6 +38,8 @@ export const routes: RouteRecordRaw[] = [
     component: AuthLayout,
     children: authRoutes,
   },
+  { path: '/forgot-password', component: AuthLayout, children: forgotPasswordRoutes },
+  { path: '/reset-password', component: AuthLayout, children: resetPasswordRoutes },
   {
     path: '/',
     component: AppLayout,

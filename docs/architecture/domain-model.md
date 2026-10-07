@@ -60,7 +60,7 @@ mas nenhum módulo de negócio depende da lógica interna de `identity`.
 | `orders` | `Order`, `OrderLine`, `OrderStatusHistory`, `OrderNumberSequence` (`OrderReturn`: Phase 9) | use cases do pedido |
 | `payments` | `Payment`, `Refund` | `create_pending_card_payment`, `execute_charge`, `record_manual_payment`, `request_refund`, `retry_refund`, `confirm_manual_refund`; queries `payments_for_order`, `has_payment_in_flight` |
 | `shipping` | `Shipment` | `request_label`, `record_shipment`, `confirm_delivery`; query `shipment_for_order`; job `track_due_shipments` |
-| `notifications` | `NotificationLog` | — (reage a eventos) |
+| `notifications` | `Notification` | — (reage a eventos); query `notifications_for` (histórico do pedido) |
 | `audit` | `AuditLog` | `record(...)` usado por handlers |
 | `shared` | `IdempotencyRecord`, `OutboxEvent`, `ProcessedEvent` (ADR-011) | infraestrutura |
 

@@ -1,0 +1,9 @@
+{% autoescape off %}Olá, {{ name }}.
+
+O estoque de {{ item.product_name }} ({{ item.sku }}) no depósito {{ item.warehouse_code }} —
+{{ item.warehouse_name }} chegou ao ponto de reposição.
+
+Disponível agora: {{ item.available }}
+Ponto de reposição: {{ item.reorder_point }}
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

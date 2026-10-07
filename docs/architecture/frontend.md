@@ -256,6 +256,17 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Status `SHIPPED` exibido como **Despachado** | "Enviado" já significa o envio do pedido (`submitted_at`); o histórico mostrava "Pronto para envio → Enviado" num pedido "Enviado em…" (achado no E2E) | manter "Enviado" |
 | Pedido em trânsito **sem** polling | a entrega leva dias; o TanStack Query recarrega ao voltar o foco para a aba | polling de horas |
 
+### Decisões de implementação (Phase 10)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Criar usuário por **convite** é o padrão; senha inicial é opção | quem cria não deveria conhecer a senha de outra pessoa | só senha inicial |
+| Erro de um campo escondido (senha, no modo convite) vai para o alerta do formulário | o E2E mostrou o envio "não fazendo nada": o `400` caiu num campo que não estava na tela | confiar no mapeamento genérico de campos |
+| Tela "Definir senha" lê `uid`/`token` do fragmento e faz `router.replace` sem ele | token fora da barra de endereço e do histórico | query string |
+| "Esqueci minha senha" mostra a mesma mensagem exista ou não a conta | não revelar quais e-mails existem | mensagem de "e-mail não encontrado" |
+| Seção **Avisos ao cliente** no pedido, com e-mail mascarado; polling enquanto há envio pendente ou o pedido mudou há menos de 1 min | o aviso nasce pelo outbox segundos depois da mudança | polling contínuo |
+| Selo **Convite pendente** e "Reenviar convite" na lista de usuários | o admin precisa saber quem ainda não entrou | — |
+
 ### Dashboard
 
 Responde "o que está acontecendo no negócio?": cards (pedidos de hoje, faturamento, pedidos

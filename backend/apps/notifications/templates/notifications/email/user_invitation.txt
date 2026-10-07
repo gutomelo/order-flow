@@ -1,0 +1,10 @@
+{% autoescape off %}Olá, {{ link.first_name }}.
+
+Você foi convidado para usar o OrderFlow na organização {{ link.organization_name }}.
+Defina a sua senha pelo link abaixo (válido por {{ link.valid_hours }} horas):
+
+{{ link.url }}
+
+Se você não esperava este convite, ignore este e-mail.
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

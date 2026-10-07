@@ -11,6 +11,7 @@ import { buildCurrentUser, mountWithPlugins } from '@/testing/mountWithPlugins'
 vi.mock('@/modules/orders/api/ordersApi', async (importOriginal) => ({
   ...(await importOriginal<typeof ordersApi>()),
   getOrder: vi.fn(),
+  listOrderNotifications: vi.fn(),
   listOrders: vi.fn(),
   advanceFulfillment: vi.fn(),
   confirmDelivery: vi.fn(),
@@ -74,6 +75,7 @@ async function mountOrder(order: Order, user = warehouse) {
 describe('order fulfillment', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    api.listOrderNotifications.mockResolvedValue([])
   })
 
   it('starts picking a paid order in one click', async () => {
@@ -160,6 +162,7 @@ describe('order fulfillment', () => {
 describe('FulfillmentPage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    api.listOrderNotifications.mockResolvedValue([])
   })
 
   const page = (results: Order[]) => ({

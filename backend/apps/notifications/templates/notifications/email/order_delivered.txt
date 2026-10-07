@@ -1,0 +1,5 @@
+{% autoescape off %}Olá, {{ name }}.
+
+O pedido {{ order.reference }} foi entregue. Obrigado pela compra!
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

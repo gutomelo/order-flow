@@ -128,6 +128,19 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   permissão, despachar sem confirmar, não aparar a observação, fila sem ordenação, rota sem
   permissão e erro do despacho fora do diálogo derrubam um teste cada.
 
+- Phase 10: 20 mutações no backend (transição sem evento, rascunho cancelado avisando, ignorar o
+  contato principal, envio sem checar status, erro do SMTP com a mensagem, nunca marcar `FAILED`,
+  cancelamento sem o aviso de estorno, alerta enquanto o estoque continua baixo, ledger sem
+  alerta, avisar usuário inativo, reset para conta inativa, reset sem encerrar sessões, token na
+  query string, throttle errado, histórico sem escopo, e-mail sem máscara, reenvio sem checar
+  convite pendente, criar sem senha sem convidar, `Message-ID` aleatório, aviso sem destinatário
+  na fila) — todas detectadas; a do reset para conta inativa só depois de o teste olhar também os
+  avisos criados (o envio já barrava, então só o e-mail não bastava). No frontend, o teste de
+  "token fora da URL" era vazio (com histórico em memória `window.location` nunca muda) — a
+  implementação passou a usar o router e o teste a olhar a rota. O E2E achou o que os testes não
+  pegavam: `password: null` recusado pelo serializer (o teste omitia o campo) e o erro sumindo no
+  campo escondido; e o RabbitMQ bloqueado por disco cheio, que o outbox atravessou sem perder nada.
+
 ## Teste de concorrência — esqueleto
 
 ```python

@@ -39,6 +39,12 @@ app.conf.beat_schedule = {
         "schedule": 60.0,
         "options": {"queue": "integrations"},
     },
+    # Avisos pendentes parados (enfileiramento perdido, worker que caiu) voltam para a fila.
+    "requeue-stale-notifications": {
+        "task": "maintenance.requeue_stale_notifications",
+        "schedule": 300.0,
+        "options": {"queue": "maintenance"},
+    },
     "purge-published-events": {
         "task": "maintenance.purge_published_events",
         "schedule": crontab(minute=50, hour=4),

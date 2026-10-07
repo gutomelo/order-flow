@@ -4,17 +4,18 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 9 — Shipping concluída; próxima: Phase 10 — Notifications.** Existem a
-fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT), `customers` (clientes,
-segmentos, endereços e contatos), `suppliers`, `catalog` (produtos e categorias), `inventory`
-(depósitos, saldos, recebimentos, ajustes, transferências e o ledger de movimentações), `pricing`
-(tabela padrão + por segmento), `orders` (rascunho → `PENDING`, cancelamento, numeração,
-idempotência, reserva de estoque com expiração, pagamento, cancelamento de pago com estorno,
-separação, despacho e entrega), `payments` (cartão via `PaymentGateway` fake, baixa manual,
-estornos, reconciliação) e `shipping` (remessa via `ShippingProvider` fake, rastreio, entrega
-manual). Eventos de negócio usam o Transactional Outbox de `shared/events` (ADR-011). Pedidos vão
-até `DELIVERED`; devolução pós-entrega ainda não existe. Não crie models, endpoints ou telas de
-fases futuras
+**Fase atual: Phase 10 — Notifications concluída; próxima: Phase 11 — Dashboard.** Existem a
+fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT, convite e redefinição de
+senha por e-mail), `customers` (clientes, segmentos, endereços e contatos), `suppliers`, `catalog`
+(produtos e categorias), `inventory` (depósitos, saldos, recebimentos, ajustes, transferências, o
+ledger de movimentações e alerta de estoque baixo), `pricing` (tabela padrão + por segmento),
+`orders` (rascunho → `PENDING`, cancelamento, numeração, idempotência, reserva de estoque com
+expiração, pagamento, cancelamento de pago com estorno, separação, despacho e entrega),
+`payments` (cartão via `PaymentGateway` fake, baixa manual, estornos, reconciliação), `shipping`
+(remessa via `ShippingProvider` fake, rastreio, entrega manual) e `notifications` (e-mails a
+partir de eventos, Mailpit em dev). Eventos de negócio usam o Transactional Outbox de
+`shared/events` (ADR-011). Devolução pós-entrega ainda não existe. Não crie models, endpoints ou
+telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).
 
 **Multi-tenant (ADR-013):** todo model de negócio herda `shared.tenancy.TenantScopedModel`; toda

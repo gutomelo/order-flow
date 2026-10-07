@@ -99,6 +99,21 @@ export interface OrderShipment {
   delivery_note: string
 }
 
+export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED'
+
+/** Aviso por e-mail ao cliente sobre o pedido (módulo notifications). */
+export interface OrderNotification {
+  id: string
+  kind: string
+  status: NotificationStatus
+  /** E-mail mascarado (ma***@empresa.com); vazio quando não havia destinatário. */
+  recipient: string
+  subject: string
+  attempts: number
+  created_at: string
+  sent_at: string | null
+}
+
 export interface Order extends OrderSummary {
   warehouse: { id: string; code: string; name: string } | null
   shipping_address_id: string | null

@@ -9,6 +9,7 @@ export const ordersKeys = {
   all: ['orders'] as const,
   list: (filters: OrderFilters) => [...ordersKeys.all, 'list', filters] as const,
   detail: (id: string) => [...ordersKeys.all, 'detail', id] as const,
+  notifications: (id: string) => [...ordersKeys.all, 'notifications', id] as const,
   quote: (input: { customer_id: string; lines: LineInput[] }) =>
     [...ordersKeys.all, 'quote', input] as const,
 }
@@ -48,6 +49,27 @@ export function useOrder(id: MaybeRefOrGetter<string | undefined>) {
     enabled: computed(() => Boolean(toValue(id))),
     // Enquanto o backend conclui algo em background, a tela acompanha sem a pessoa recarregar.
     refetchInterval: (query) => (awaitsBackgroundWork(query.state.data) ? PENDING_POLL_MS : false),
+  })
+}
+
+const RECENT_CHANGE_MS = 60_000
+
+/**
+ * Avisos ao cliente. Nascem pelo outbox alguns segundos depois da mudança do pedido e saem numa
+ * fila: a tela acompanha enquanto há envio pendente ou o pedido mudou há menos de um minuto.
+ */
+export function useOrderNotifications(order: MaybeRefOrGetter<Order | undefined>) {
+  return useQuery({
+    queryKey: computed(() => ordersKeys.notifications(toValue(order)?.id ?? '')),
+    queryFn: () => api.listOrderNotifications(toValue(order)?.id ?? ''),
+    enabled: computed(() => Boolean(toValue(order))),
+    refetchInterval: (query) => {
+      const current = toValue(order)
+      const pending = query.state.data?.some((n) => n.status === 'PENDING')
+      const recent =
+        current !== undefined && Date.now() - Date.parse(current.updated_at) < RECENT_CHANGE_MS
+      return pending || recent ? PENDING_POLL_MS : false
+    },
   })
 }
 

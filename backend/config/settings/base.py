@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.pricing",
     "apps.payments",
     "apps.shipping",
+    "apps.notifications",
     "apps.orders",
 ]
 
@@ -160,6 +161,8 @@ REST_FRAMEWORK = {
         "user": env("API_THROTTLE_USER", default="600/min"),
         # Login e refresh: limita tentativas de força bruta (por IP).
         "auth": env("API_THROTTLE_AUTH", default="10/min"),
+        # Pedir e-mail de senha: limite baixo (cada pedido dispara um e-mail).
+        "password_reset": env("API_THROTTLE_PASSWORD_RESET", default="5/hour"),
     },
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
@@ -227,6 +230,28 @@ SHIPPING_PROVIDER = env("SHIPPING_PROVIDER", default="fake")
 SHIPMENT_TRACKING_INTERVAL_MINUTES = env.int("SHIPMENT_TRACKING_INTERVAL_MINUTES", default=60)
 # Só a transportadora simulada: minutos entre o despacho e a entrega.
 FAKE_SHIPPING_TRANSIT_MINUTES = env.int("FAKE_SHIPPING_TRANSIT_MINUTES", default=2)
+
+# ---------------------------------------------------------------------------
+# E-mail e notificações (docs/domain/notifications.md)
+# ---------------------------------------------------------------------------
+# O backend de e-mail do Django é a porta/adapter: console por padrão (seguro), SMTP via env
+# (Mailpit em dev), locmem nos testes.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="OrderFlow <nao-responda@orderflow.local>")
+# Base dos links dos e-mails (convite e redefinição de senha).
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+# Validade do link de convite/redefinição de senha (o token do Django expira junto).
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT_HOURS", default=72) * 3600
+# Tentativas de envio de um e-mail antes de marcá-lo FAILED.
+NOTIFICATIONS_MAX_ATTEMPTS = env.int("NOTIFICATIONS_MAX_ATTEMPTS", default=5)
+# Fuso usado nas datas dentro dos e-mails (o e-mail não sabe o fuso de quem lê).
+NOTIFICATIONS_TIME_ZONE = env("NOTIFICATIONS_TIME_ZONE", default="America/Sao_Paulo")
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

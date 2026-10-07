@@ -156,6 +156,20 @@ recusado (`docs/domain/payments.md`).
 - A observação da entrega manual é texto livre limitado (200) e nunca vai para log; o log registra
   só ids e a origem (`MANUAL`/`PROVIDER`).
 
+## Convite e redefinição de senha (Phase 10)
+
+- Token sem estado do Django, de uso único e com validade (72 h); nunca persistido nem logado —
+  nem no outbox: o evento leva só o id do usuário e o link é gerado na hora do envio. Teste
+  `test_the_token_is_never_stored` procura o token no outbox e nos avisos.
+- Sem enumeração de contas: `POST /auth/password-reset` responde `202` sempre; throttle
+  `password_reset` (5/hora por IP).
+- Link com o token no **fragmento** (`#`), que não vai ao servidor nem ao `Referer`; a tela remove
+  o token da URL e do histórico ao ler.
+- Senha nova encerra todas as sessões (refresh tokens na blacklist).
+- Avisos por e-mail: endereço e conteúdo nunca vão para log (só ids); `last_error` guarda o tipo
+  do erro do SMTP, não a mensagem (que traz o endereço). Histórico na tela com e-mail mascarado.
+  Verificado no E2E: nenhum e-mail ou token nos logs do backend e do worker.
+
 ## Revisão
 
 Toda mudança em auth, permissões, endpoints, serializers, settings ou dependências passa pela skill

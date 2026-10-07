@@ -16,7 +16,10 @@ from apps.identity.api.serializers import (
     CurrentUserSerializer,
     LoginResponseSerializer,
     LoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
 )
+from apps.identity.application import passwords
 from apps.identity.application.commands.authenticate import Login, Logout, RefreshSession
 from apps.identity.domain.exceptions import InvalidRefreshToken
 from apps.identity.models import User
@@ -133,6 +136,45 @@ class LogoutView(AuthEndpoint):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         _delete_refresh_cookie(response)
         return response
+
+
+class PasswordResetRequestView(AuthEndpoint):
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = "password_reset"
+
+    @extend_schema(
+        request=PasswordResetRequestSerializer,
+        responses={202: None},
+        summary="Pede o e-mail de redefinição de senha",
+        description="Responde 202 exista ou não a conta: não revela quais e-mails existem.",
+    )
+    def post(self, request: Request) -> Response:
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        passwords.request_password_reset(serializer.validated_data["email"])
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class PasswordResetConfirmView(AuthEndpoint):
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=PasswordResetConfirmSerializer,
+        responses={
+            204: None,
+            400: OpenApiResponse(description="INVALID_PASSWORD_RESET_TOKEN"),
+            422: OpenApiResponse(description="WEAK_PASSWORD"),
+        },
+        summary="Define a senha (convite ou redefinição)",
+        description="Encerra as sessões abertas do usuário; ele entra de novo com a senha nova.",
+    )
+    def post(self, request: Request) -> Response:
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        passwords.reset_password(data["uid"], data["token"], data["password"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CurrentUserView(APIView):

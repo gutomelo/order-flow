@@ -13,6 +13,7 @@ vi.mock('@/modules/users/api/usersApi', async (importOriginal) => ({
   listTeams: vi.fn(),
   setUserActive: vi.fn(),
   createUser: vi.fn(),
+  resendInvitation: vi.fn(),
 }))
 
 const api = vi.mocked(usersApi)
@@ -29,6 +30,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     is_active: true,
     last_login: null,
     date_joined: '2026-10-01T12:00:00Z',
+    invitation_pending: false,
     ...overrides,
   }
 }
@@ -146,6 +148,7 @@ describe('UsersPage', () => {
     await flushPromises()
     await wrapper.findAll('dialog input')[0]?.setValue('Carla') // nome
     await wrapper.find('dialog input[type="email"]').setValue('carla@acme.com')
+    await wrapper.find('dialog select').setValue('password') // acesso: senha inicial
     await wrapper.find('dialog input[type="password"]').setValue('senha12345')
     await wrapper.find('#user-form').trigger('submit')
     await flushPromises()
@@ -153,5 +156,81 @@ describe('UsersPage', () => {
     const password = wrapper.find('dialog input[type="password"]')
     expect(wrapper.find('dialog').text()).toContain('Esta senha é muito comum.')
     expect(password.attributes('aria-invalid')).toBe('true')
+  })
+
+  it('invites by email by default, without asking for a password', async () => {
+    api.listUsers.mockResolvedValue(page([]))
+    api.createUser.mockResolvedValue(buildUser({ invitation_pending: true }))
+    const { wrapper } = await mountWithPlugins(App, { route: '/users' })
+    await flushPromises()
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Novo usuário'))
+      ?.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('dialog input[type="password"]').exists()).toBe(false)
+    await wrapper.findAll('dialog input')[0]?.setValue('Carla')
+    await wrapper.find('dialog input[type="email"]').setValue('carla@acme.com')
+    await wrapper.find('#user-form').trigger('submit')
+    await flushPromises()
+
+    expect(api.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'carla@acme.com', password: null }),
+    )
+    expect(wrapper.text()).toContain('Convite enviado para carla@acme.com.')
+  })
+
+  it('shows a pending invitation and sends it again', async () => {
+    api.listUsers.mockResolvedValue(page([buildUser({ invitation_pending: true })]))
+    api.resendInvitation.mockResolvedValue(buildUser({ invitation_pending: true }))
+    const { wrapper } = await mountWithPlugins(App, { route: '/users' })
+    await flushPromises()
+
+    const row = wrapper.find('tbody tr')
+    expect(row.text()).toContain('Convite pendente')
+    await row
+      .findAll('button')
+      .find((button) => button.text().includes('Reenviar convite para Bruno Lima'))
+      ?.trigger('click')
+    await flushPromises()
+
+    expect(api.resendInvitation).toHaveBeenCalledWith('user-2')
+    expect(wrapper.text()).toContain('Convite reenviado para bruno@acme.com.')
+  })
+
+  it('offers no resend once the person has set the password', async () => {
+    api.listUsers.mockResolvedValue(page([buildUser()]))
+    const { wrapper } = await mountWithPlugins(App, { route: '/users' })
+    await flushPromises()
+
+    expect(wrapper.find('tbody').text()).not.toContain('Convite pendente')
+    expect(wrapper.find('tbody').text()).not.toContain('Reenviar convite')
+  })
+
+  it('shows an error about the hidden password field at the top of the invitation form', async () => {
+    api.listUsers.mockResolvedValue(page([]))
+    api.createUser.mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: 'VALIDATION_ERROR',
+        message: 'Os dados enviados são inválidos.',
+        details: { fields: { password: ['Este campo pode não ser nulo.'] } },
+      }),
+    )
+    const { wrapper } = await mountWithPlugins(App, { route: '/users' })
+    await flushPromises()
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Novo usuário'))
+      ?.trigger('click')
+    await flushPromises()
+    await wrapper.findAll('dialog input')[0]?.setValue('Carla')
+    await wrapper.find('dialog input[type="email"]').setValue('carla@acme.com')
+    await wrapper.find('#user-form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('dialog [role="alert"]').text()).toContain('Este campo pode não ser nulo.')
   })
 })

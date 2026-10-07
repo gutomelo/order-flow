@@ -11,6 +11,7 @@ import { buildCurrentUser, mountWithPlugins } from '@/testing/mountWithPlugins'
 vi.mock('@/modules/orders/api/ordersApi', async (importOriginal) => ({
   ...(await importOriginal<typeof ordersApi>()),
   getOrder: vi.fn(),
+  listOrderNotifications: vi.fn(),
   payOrder: vi.fn(),
   recordPayment: vi.fn(),
 }))
@@ -66,6 +67,7 @@ async function mountOrder(user = seller) {
 describe('order payment', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    api.listOrderNotifications.mockResolvedValue([])
     api.getOrder.mockResolvedValue(awaiting)
   })
 
@@ -184,6 +186,7 @@ describe('order payment', () => {
 describe('cancelling a paid order', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    api.listOrderNotifications.mockResolvedValue([])
     api.getOrder.mockResolvedValue(buildOrder({ status: 'PAID', number: 3, payments: [payment()] }))
   })
 

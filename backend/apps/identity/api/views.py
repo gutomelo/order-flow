@@ -17,6 +17,7 @@ from apps.identity.api.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from apps.identity.application import passwords
 from apps.identity.application.commands.teams import (
     CreateTeam,
     CreateTeamCommand,
@@ -77,6 +78,13 @@ class UserViewSet(
             )
         )
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=None, responses=UserSerializer)
+    @action(detail=True, methods=["post"], url_path="resend-invitation")
+    def resend_invitation(self, request: Request, pk: str | None = None) -> Response:
+        user = self.get_object()
+        user = passwords.resend_invitation(self.organization_id, user.id)
+        return Response(UserSerializer(user).data)
 
     @extend_schema(request=UserUpdateSerializer, responses=UserSerializer)
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:

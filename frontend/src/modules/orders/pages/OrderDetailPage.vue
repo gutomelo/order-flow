@@ -12,6 +12,7 @@ import { useSessionStore } from '@/modules/auth/stores/session'
 import { formatPostalCode } from '@/modules/customers/addresses'
 import CancelOrderDialog from '@/modules/orders/components/CancelOrderDialog.vue'
 import OrderFulfillmentPanel from '@/modules/orders/components/OrderFulfillmentPanel.vue'
+import OrderNotificationsPanel from '@/modules/orders/components/OrderNotificationsPanel.vue'
 import OrderPaymentPanel from '@/modules/orders/components/OrderPaymentPanel.vue'
 import OrderStatusBadge from '@/modules/orders/components/OrderStatusBadge.vue'
 import OrderTotals from '@/modules/orders/components/OrderTotals.vue'
@@ -341,6 +342,7 @@ const cancelOpen = ref(false)
             </div>
           </section>
 
+          <OrderNotificationsPanel v-if="!isDraft" :order="order" />
           <section
             aria-labelledby="order-history-heading"
             class="rounded-lg border border-border bg-surface p-5"

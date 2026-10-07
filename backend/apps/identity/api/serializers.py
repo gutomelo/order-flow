@@ -6,6 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from apps.identity.application.passwords import is_invitation_pending
 from apps.identity.domain.permissions import Role, permissions_for
 from apps.identity.models import Organization, Team, User
 
@@ -68,6 +69,7 @@ class AccessTokenSerializer(serializers.Serializer[dict[str, Any]]):
 class UserSerializer(serializers.ModelSerializer[User]):
     full_name = serializers.CharField(read_only=True)
     team = TeamSummarySerializer(read_only=True)
+    invitation_pending = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -82,19 +84,33 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "is_active",
             "last_login",
             "date_joined",
+            "invitation_pending",
         )
         read_only_fields = fields
+
+    def get_invitation_pending(self, user: User) -> bool:
+        return is_invitation_pending(user)
 
 
 class UserCreateSerializer(serializers.Serializer[dict[str, Any]]):
     email = serializers.EmailField(max_length=254)
-    password = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)
+    # Sem senha: o usuário recebe um convite por e-mail e define a própria senha.
+    password = serializers.CharField(
+        max_length=128,
+        trim_whitespace=False,
+        write_only=True,
+        required=False,
+        allow_null=True,
+        default=None,
+    )
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150, allow_blank=True, default="")
     role = serializers.ChoiceField(choices=ROLE_CHOICES)
     team_id = serializers.UUIDField(required=False, allow_null=True, default=None)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if attrs["password"] is None:
+            return attrs
         # Política de senha do Django (tamanho, senhas comuns, similaridade com os dados).
         candidate = User(
             email=attrs["email"], first_name=attrs["first_name"], last_name=attrs["last_name"]
@@ -127,3 +143,13 @@ class TeamSerializer(serializers.ModelSerializer[Team]):
 
 class TeamWriteSerializer(serializers.Serializer[dict[str, Any]]):
     name = serializers.CharField(max_length=100)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    email = serializers.EmailField(max_length=254)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer[dict[str, Any]]):
+    uid = serializers.CharField(max_length=100)
+    token = serializers.CharField(max_length=100)
+    password = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)

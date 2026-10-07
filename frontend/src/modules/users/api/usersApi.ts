@@ -38,6 +38,11 @@ export async function changeUserRole(id: string, role: Role) {
   return data
 }
 
+export async function resendInvitation(id: string) {
+  const { data } = await http.post<User>(`/users/${id}/resend-invitation`)
+  return data
+}
+
 export async function setUserActive(id: string, active: boolean) {
   const { data } = await http.post<User>(`/users/${id}/${active ? 'activate' : 'deactivate'}`)
   return data

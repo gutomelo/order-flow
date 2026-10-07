@@ -16,6 +16,20 @@ export async function logout() {
   await http.post('/auth/logout')
 }
 
+/** Sempre 202: a resposta não revela se o e-mail tem conta. */
+export async function requestPasswordReset(email: string) {
+  await http.post('/auth/password-reset', { email })
+}
+
+/** Convite aceito ou senha esquecida: define a senha com o link recebido por e-mail. */
+export async function confirmPasswordReset(input: {
+  uid: string
+  token: string
+  password: string
+}) {
+  await http.post('/auth/password-reset/confirm', input)
+}
+
 export async function fetchCurrentUser() {
   const { data } = await http.get<CurrentUser>('/auth/me')
   return data

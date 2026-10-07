@@ -11,6 +11,7 @@ import { buildCurrentUser, mountWithPlugins } from '@/testing/mountWithPlugins'
 vi.mock('@/modules/orders/api/ordersApi', async (importOriginal) => ({
   ...(await importOriginal<typeof ordersApi>()),
   getOrder: vi.fn(),
+  listOrderNotifications: vi.fn(),
   submitOrder: vi.fn(),
   cancelOrder: vi.fn(),
   quoteOrder: vi.fn(),
@@ -37,6 +38,7 @@ const button = (wrapper: Awaited<ReturnType<typeof mountWithPlugins>>['wrapper']
 describe('OrderDetailPage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    api.listOrderNotifications.mockResolvedValue([])
     api.getOrder.mockResolvedValue(buildOrder())
     api.quoteOrder.mockResolvedValue(buildQuote())
   })

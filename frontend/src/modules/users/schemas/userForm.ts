@@ -11,14 +11,29 @@ const profile = {
   team_id: z.string(),
 }
 
-export const createUserSchema = z.object({
-  ...profile,
-  email: z.email({ error: 'validation.email' }),
-  password: z.string().min(8, { error: 'validation.passwordMin' }),
-})
+/** Convite: a pessoa recebe um link e define a própria senha (ninguém mais a conhece). */
+export const ACCESS_MODES = ['invite', 'password'] as const
 
-// Edição: mesmos campos do formulário, mas e-mail e senha não são editados nem validados.
-export const editUserSchema = createUserSchema.extend({ email: z.string(), password: z.string() })
+export const createUserSchema = z
+  .object({
+    ...profile,
+    email: z.email({ error: 'validation.email' }),
+    access: z.enum(ACCESS_MODES),
+    password: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.access === 'password' && data.password.length < 8) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: 'validation.passwordMin' })
+    }
+  })
+
+// Edição: mesmos campos do formulário, mas e-mail, acesso e senha não são editados.
+export const editUserSchema = z.object({
+  ...profile,
+  email: z.string(),
+  access: z.string(),
+  password: z.string(),
+})
 
 export const teamSchema = z.object({
   name: z.string().trim().min(1, { error: 'validation.required' }).max(100),

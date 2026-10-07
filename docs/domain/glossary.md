@@ -99,6 +99,11 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Confirmação manual de entrega | `ConfirmDelivery` (`DeliverySource.MANUAL`) | Entrega informada por uma pessoa (retirada, frota própria) |
 | Transportadora / provedor de frete | `ShippingProvider` | Porta para o provedor logístico (adapter) |
 | Código de rastreio | `tracking_code` | Identificador do envio no provedor |
+| Aviso / notificação | `Notification` | E-mail gerado por um evento, com status de envio (enviado, falhou, sem destinatário) |
+| Destinatário do pedido | `get_notification_recipient` | Contato principal com e-mail; sem ele, o e-mail do cadastro do cliente |
+| Convite | `UserInvited` / `invitation_pending` | Usuário criado sem senha que recebe um link para defini-la |
+| Redefinição de senha | `PasswordResetRequested` / `reset_password` | "Esqueci minha senha": link de uso único por e-mail |
+| Estoque baixo | `inventory.stock.low` | Disponível cruzou o ponto de reposição para baixo |
 
 ## Técnico
 

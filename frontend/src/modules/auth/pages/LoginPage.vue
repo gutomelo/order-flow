@@ -72,6 +72,12 @@ async function onSubmit() {
       <BaseButton type="submit" class="mt-2 w-full" :loading="form.isSubmitting.value">
         {{ t('auth.login.submit') }}
       </BaseButton>
+      <RouterLink
+        :to="{ name: 'forgot-password' }"
+        class="text-center text-sm text-link underline-offset-2 hover:underline"
+      >
+        {{ t('auth.login.forgot') }}
+      </RouterLink>
     </form>
   </div>
 </template>

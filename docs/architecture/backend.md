@@ -106,7 +106,7 @@ POST /api/v1/orders
 | --- | --- | --- |
 | Strategy | `pricing` (`PricingStrategy`: Standard/Wholesale/Contract), descontos, frete | Regras comerciais variam por cliente/contrato sem `if/elif` crescente |
 | State (tabela de transições) | `orders` (`OrderStateMachine`), reservas, pagamentos | Impedir transições inválidas de forma declarativa e testável |
-| Adapter + Port (`Protocol`) | `PaymentGateway`, `ShippingProvider`, `EmailProvider` | Isolar integrações; testar com fakes (`FakePaymentGateway`, `FakeShippingProvider`, `ConsoleEmailProvider`) |
+| Adapter + Port (`Protocol`) | `PaymentGateway`, `ShippingProvider`; e-mail usa o `EMAIL_BACKEND` do Django (já é porta + adapters: SMTP, locmem, console) | Isolar integrações; testar com fakes (`FakePaymentGateway`, `FakeShippingProvider`, `mail.outbox`) |
 | Observer / Domain Events | `shared/events` | Desacoplar efeitos secundários (auditoria, notificações) do caso de uso |
 | Repository | somente com ganho real (ex.: queries de relatório complexas) | Isolar consultas complexas; **não** criar por model |
 | Specification | candidatos: elegibilidade a desconto, filtros de estoque baixo | Regras combináveis reutilizadas em domínio e query — só se surgir duplicação real |

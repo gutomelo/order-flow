@@ -19,6 +19,9 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
 # Em dev, o rastreio consulta a transportadora simulada a cada minuto (entrega em minutos).
 SHIPMENT_TRACKING_INTERVAL_MINUTES = env.int("SHIPMENT_TRACKING_INTERVAL_MINUTES", default=1)
 
+# E-mails vão para o Mailpit do Docker Compose (caixa de entrada em http://localhost:8025).
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+
 # Desenvolvimento roda em HTTP: o cookie de refresh não pode exigir HTTPS.
 AUTH_REFRESH_COOKIE = {
     **AUTH_REFRESH_COOKIE,

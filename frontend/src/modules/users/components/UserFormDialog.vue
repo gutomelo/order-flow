@@ -13,7 +13,7 @@ import { useZodForm } from '@/composables/useZodForm'
 import { useSessionStore } from '@/modules/auth/stores/session'
 import { ROLES, type Role } from '@/modules/auth/types'
 import { useCreateUser, useTeamsList, useUpdateUser } from '@/modules/users/composables/useUsers'
-import { createUserSchema, editUserSchema } from '@/modules/users/schemas/userForm'
+import { ACCESS_MODES, createUserSchema, editUserSchema } from '@/modules/users/schemas/userForm'
 import type { User } from '@/modules/users/types'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -37,6 +37,7 @@ const isSelf = computed(() => user !== null && user.id === session.user?.id)
 
 const emptyValues = {
   email: '',
+  access: 'invite' as (typeof ACCESS_MODES)[number],
   password: '',
   first_name: '',
   last_name: '',
@@ -63,6 +64,9 @@ watch(open, (isOpen) => {
 const roleOptions = computed(() =>
   ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) })),
 )
+const accessOptions = computed(() =>
+  ACCESS_MODES.map((value) => ({ value, label: t(`users.form.access.${value}`) })),
+)
 const teamOptions = computed(() => [
   { value: '', label: t('users.form.noTeam') },
   ...(teams.data.value?.results ?? []).map((team) => ({ value: team.id, label: team.name })),
@@ -79,15 +83,31 @@ async function onSubmit() {
           role: isSelf.value ? undefined : data.role,
         })
       } else {
-        await createUser.mutateAsync({ ...data, team_id: teamId })
+        await createUser.mutateAsync({
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          role: data.role,
+          team_id: teamId,
+          password: data.access === 'password' ? data.password : null,
+        })
       }
     },
     (error) => {
       form.formError.value = errorMessage(error)
     },
   )
+  // No convite o campo de senha não aparece: um erro nele precisa ir para o topo, senão some.
+  const hiddenPasswordError = form.values.access === 'invite' && form.errors.value.password
+  if (hiddenPasswordError) form.formError.value = hiddenPasswordError
   if (saved) {
-    toasts.success(t(isEdit.value ? 'users.feedback.updated' : 'users.feedback.created'))
+    toasts.success(
+      isEdit.value
+        ? t('users.feedback.updated')
+        : form.values.access === 'invite'
+          ? t('users.feedback.invited', { email: form.values.email })
+          : t('users.feedback.created'),
+    )
     open.value = false
   }
 }
@@ -127,7 +147,14 @@ async function onSubmit() {
           required
           :error="form.errors.value.email"
         />
+        <SelectField
+          v-model="form.values.access"
+          :label="t('users.form.access.label')"
+          :options="accessOptions"
+          :help="form.values.access === 'invite' ? t('users.form.access.inviteHelp') : undefined"
+        />
         <TextField
+          v-if="form.values.access === 'password'"
           v-model="form.values.password"
           type="password"
           :label="t('users.fields.initialPassword')"

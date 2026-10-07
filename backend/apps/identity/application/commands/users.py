@@ -11,6 +11,7 @@ from uuid import UUID
 import structlog
 from django.db import IntegrityError, transaction
 
+from apps.identity.application import passwords
 from apps.identity.domain.exceptions import EmailAlreadyInUse, TeamNotFound, UserNotFound
 from apps.identity.domain.permissions import Role
 from apps.identity.domain.policies import (
@@ -55,7 +56,7 @@ class CreateUserCommand:
     organization_id: UUID
     actor_id: UUID
     email: str
-    password: str
+    password: str | None  # None = convite por e-mail (a pessoa define a senha)
     first_name: str
     last_name: str
     role: Role
@@ -82,6 +83,8 @@ class CreateUser:
             except IntegrityError as exc:
                 # Corrida entre duas criações com o mesmo e-mail: o UNIQUE do banco decide.
                 raise EmailAlreadyInUse() from exc
+            if command.password is None:
+                passwords.invite(user)  # mesma transação: sem usuário, sem convite
         logger.info(
             "identity.user.created",
             user_id=str(user.id),

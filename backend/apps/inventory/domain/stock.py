@@ -63,3 +63,10 @@ def adjustment_delta(balance: StockBalance, *, counted: int, expected_on_hand: i
     if counted < balance.reserved:
         raise InvalidAdjustment(details={"counted": counted, "reserved": balance.reserved})
     return counted - balance.on_hand
+
+
+def crossed_reorder_point(available_before: int, available_after: int, reorder_point: int) -> bool:
+    """Estoque baixo só no momento em que o disponível **cruza** o ponto de reposição para baixo:
+    um aviso por queda, não um a cada movimento enquanto continua baixo. `reorder_point = 0`
+    desliga o alerta."""
+    return reorder_point > 0 and available_before > reorder_point >= available_after

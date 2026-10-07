@@ -178,6 +178,7 @@ modules = [
     "apps.pricing.api",
     "apps.orders.api",
     "apps.payments.api",
+    "apps.notifications.api",
 ]
 
 [[tool.importlinter.contracts]]
@@ -276,5 +277,51 @@ forbidden_modules = [
     "apps.catalog",
     "apps.inventory",
     "apps.pricing",
+    "apps.payments",
+]
+
+[[tool.importlinter.contracts]]
+name = "notifications: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.notifications.api",
+    "apps.notifications.application",
+    "apps.notifications.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "ninguém depende de notifications (só reage a eventos)"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+]
+forbidden_modules = ["apps.notifications"]
+
+[[tool.importlinter.contracts]]
+name = "notifications lê outros módulos só pela camada pública (application/selectors)"
+type = "forbidden"
+# Indireto é o esperado: application/selectors do módulo dono usam os próprios models.
+allow_indirect_imports = true
+# Testes de integração preparam cenários com os models dos outros módulos (só setup de dados).
+ignore_imports = ["apps.notifications.tests.** -> apps.**"]
+source_modules = ["apps.notifications"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.customers.models",
+    "apps.customers.api",
+    "apps.identity.models",
+    "apps.identity.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.shipping.models",
     "apps.payments",
 ]

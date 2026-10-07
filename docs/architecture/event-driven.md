@@ -73,25 +73,23 @@ sensíveis. Consumidores que precisam de mais dados consultam o módulo dono pel
 
 | Evento | Produtor | Consumidores | Modo |
 | --- | --- | --- | --- |
-| `OrderCreated` | orders | audit, notifications, analytics | audit: in_transaction · demais: after_commit |
-| `OrderStatusChanged` | orders | audit | in_transaction |
-| `OrderPaid` | orders | notifications, audit | after_commit / in_transaction |
-| `OrderCancelled` | orders | notifications, audit | after_commit / in_transaction |
-| `OrderShipped` | orders | notifications | after_commit |
-| `OrderDelivered` | orders | notifications | after_commit |
+| `orders.order.status_changed` ✅ | orders (`transition()`) | **notifications** (e-mails ao cliente); audit (Phase 12) | outbox |
 | `StockReserved` | inventory | audit | in_transaction |
 | `StockReleased` | inventory | audit | in_transaction |
 | `StockReservationExpired` | inventory | audit, notifications (vendedor) | in_transaction / after_commit |
 | `StockAdjusted` | inventory | audit | in_transaction |
-| `StockLevelLow` | inventory | notifications, dashboard (invalidação de cache) | after_commit |
+| `inventory.stock.low` ✅ | inventory (`post_movement`) | **notifications** (estoque baixo); dashboard | outbox |
 | `StockReceived`, `StockTransferred`, `StockReturned`, `StockConsumed` | inventory | audit | in_transaction |
 | `payments.payment.approved` ✅ | payments | **orders** (`AWAITING_PAYMENT → PAID`; estorno se o pedido não pode mais ser pago) | outbox |
 | `payments.refund.requested` ✅ | payments | **payments** (executa o estorno no gateway, fora da transação de quem pediu) | outbox |
 | `payments.payment.refunded` ✅ | payments | **orders** (`CANCELLED → REFUNDED`) | outbox |
 | `PaymentFailed` | payments | notifications | outbox (Phase 10) |
 | `shipping.shipment.delivered` ✅ | shipping | **orders** (`SHIPPED → DELIVERED`) | outbox |
+| `identity.user.invited` ✅ | identity | **notifications** (convite) | outbox |
+| `identity.password_reset.requested` ✅ | identity | **notifications** (redefinição de senha) | outbox |
 
-✅ = implementado (Phases 8 e 9). Os demais são o planejado; nomes seguem `module.entity.action`.
+✅ = implementado (Phases 8 a 10). Eventos de identidade **nunca** levam token ou link: o e-mail
+gera o link na hora do envio. Os demais são o planejado; nomes seguem `module.entity.action`.
 
 Novos eventos: skill `create-domain-event` e atualização desta tabela.
 
@@ -125,7 +123,15 @@ gateway confirmar o refund.
 A UI comunica estados intermediários honestamente (ex.: "Reembolso solicitado" enquanto o pedido
 está `CANCELLED` aguardando `PaymentRefunded`).
 
-## Estado atual (Phase 9)
+## Estado atual (Phase 10)
+
+- `notifications` é o primeiro módulo que só consome eventos: sete eventos viram e-mail.
+  Handlers criam o registro; o envio é uma task da fila `notifications` após o commit
+  (`docs/domain/notifications.md`).
+- Prova de fogo no E2E: com o disco do host cheio, o RabbitMQ bloqueou as publicações; os eventos
+  ficaram no outbox e foram todos entregues (com os e-mails) assim que o broker voltou.
+
+### Phase 9
 
 - `shared/events` com outbox (ADR-011 **Accepted**). Três eventos de `payments` e um de `shipping`,
   consumidos por `orders` e pelo próprio `payments` (tabela acima).

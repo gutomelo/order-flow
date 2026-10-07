@@ -251,7 +251,7 @@ com pedidos); os movimentos já são o registro completo, e cada operação gera
 | `StockReleased` | reserva liberada por cancelamento | audit |
 | `StockReservationExpired` | reserva expirada | audit, notifications (vendedor) |
 | `StockAdjusted` | ajuste manual | audit (`STOCK_ADJUSTED`) |
-| `StockLevelLow` | `available` cruzou `reorder_point` para baixo | notifications, dashboard |
+| `inventory.stock.low` ✅ | `available` **cruzou** `reorder_point` para baixo (`crossed_reorder_point`; um aviso por queda, `reorder_point = 0` desliga), publicado por `post_movement` na transação do movimento | notifications (Phase 10); dashboard |
 
 ## Erros de domínio
 

@@ -33,6 +33,7 @@ export default {
     required: 'Campo obrigatório.',
     email: 'Informe um e-mail válido.',
     passwordMin: 'A senha deve ter pelo menos 8 caracteres.',
+    passwordMismatch: 'As senhas não são iguais.',
     cnpj: 'Informe um CNPJ válido (numérico ou alfanumérico).',
     sku: 'Use letras, números, ponto, hífen ou sublinhado (até 64 caracteres).',
     barcode: 'Use um GTIN com 8, 12, 13 ou 14 dígitos.',
@@ -78,6 +79,25 @@ export default {
       email: 'E-mail',
       password: 'Senha',
       submit: 'Entrar',
+      forgot: 'Esqueci minha senha',
+    },
+    backToLogin: 'Voltar para o login',
+    forgot: {
+      title: 'Esqueci minha senha',
+      description: 'Informe o seu e-mail. Enviaremos um link para definir uma nova senha.',
+      submit: 'Enviar link',
+      sent: 'Se houver uma conta ativa para {email}, enviamos um link para definir a senha. Ele vale por 72 horas e só funciona uma vez.',
+    },
+    reset: {
+      title: 'Definir senha',
+      description: 'Escolha a senha que você vai usar para entrar no OrderFlow.',
+      password: 'Nova senha',
+      passwordHelp: 'Mínimo de 8 caracteres; evite senhas comuns ou parecidas com o seu nome.',
+      confirmation: 'Repita a senha',
+      submit: 'Salvar senha',
+      done: 'Senha definida. Entre com a nova senha.',
+      invalidLink: 'Este link expirou ou já foi usado.',
+      askNewLink: 'Pedir um novo link',
     },
   },
   userMenu: {
@@ -110,6 +130,7 @@ export default {
     status: {
       active: 'Ativo',
       inactive: 'Inativo',
+      invitationPending: 'Convite pendente',
     },
     filters: {
       search: 'Buscar por nome ou e-mail',
@@ -123,10 +144,18 @@ export default {
       deactivate: 'Desativar usuário',
       activateUser: 'Ativar {name}',
       deactivateUser: 'Desativar {name}',
+      resendInvitation: 'Reenviar convite para {name}',
     },
     form: {
       createTitle: 'Novo usuário',
-      createDescription: 'O usuário poderá entrar com este e-mail e a senha inicial.',
+      createDescription:
+        'Por padrão, a pessoa recebe um convite por e-mail e define a própria senha.',
+      access: {
+        label: 'Acesso',
+        invite: 'Enviar convite por e-mail',
+        password: 'Definir uma senha inicial',
+        inviteHelp: 'O link de convite vale por 72 horas. Ninguém além da pessoa conhece a senha.',
+      },
       editTitle: 'Editar usuário',
       noTeam: 'Sem equipe',
       passwordHelp: 'Mínimo de 8 caracteres; evite senhas comuns. Compartilhe por um canal seguro.',
@@ -141,6 +170,8 @@ export default {
     },
     feedback: {
       created: 'Usuário criado.',
+      invited: 'Convite enviado para {email}.',
+      invitationResent: 'Convite reenviado para {email}.',
       updated: 'Usuário atualizado.',
       activated: 'Usuário ativado.',
       deactivated: 'Usuário desativado.',
@@ -392,6 +423,26 @@ export default {
       keep: 'Voltar',
       confirm: 'Confirmar cancelamento',
       done: 'Pedido cancelado.',
+    },
+    notifications: {
+      title: 'Avisos ao cliente',
+      empty: 'Nenhum e-mail enviado ao cliente sobre este pedido ainda.',
+      to: 'Para {recipient}',
+      noRecipient: 'Cliente sem e-mail cadastrado',
+      kinds: {
+        ORDER_CONFIRMED: 'Pedido confirmado',
+        ORDER_PAID: 'Pagamento aprovado',
+        ORDER_SHIPPED: 'Pedido despachado',
+        ORDER_DELIVERED: 'Pedido entregue',
+        ORDER_CANCELLED: 'Pedido cancelado',
+        ORDER_REFUNDED: 'Estorno concluído',
+      },
+      status: {
+        PENDING: 'Na fila',
+        SENT: 'Enviado',
+        FAILED: 'Falhou',
+        SKIPPED: 'Sem destinatário',
+      },
     },
     fulfillment: {
       title: 'Expedição',

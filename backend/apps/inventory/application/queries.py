@@ -36,3 +36,34 @@ def stock_levels(
         pid: StockLevel(on_hand, reserved, available) for pid, on_hand, reserved, available in rows
     }
     return {pid: levels.get(pid, StockLevel(0, 0, 0)) for pid in product_ids}
+
+
+@dataclass(frozen=True)
+class StockItemView:
+    id: UUID
+    sku: str
+    product_name: str
+    warehouse_code: str
+    warehouse_name: str
+    available: int
+    reorder_point: int
+
+
+def get_stock_item_view(organization_id: UUID, stock_item_id: UUID) -> StockItemView | None:
+    item = (
+        StockItem.objects.for_organization(organization_id)
+        .select_related("product", "warehouse")
+        .filter(id=stock_item_id)
+        .first()
+    )
+    if item is None:
+        return None
+    return StockItemView(
+        id=item.id,
+        sku=item.product.sku,
+        product_name=item.product.name,
+        warehouse_code=item.warehouse.code,
+        warehouse_name=item.warehouse.name,
+        available=item.available,
+        reorder_point=item.reorder_point,
+    )

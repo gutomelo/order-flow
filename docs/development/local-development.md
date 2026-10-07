@@ -30,6 +30,7 @@ docker compose exec backend python manage.py createsuperuser
 | OpenAPI (Swagger) | http://localhost:8000/api/docs/ |
 | Health | http://localhost:8000/health/ready |
 | RabbitMQ management | http://localhost:15672 |
+| Mailpit (e-mails enviados em dev) | http://localhost:8025 (SMTP em 1025) |
 | Flower (opcional) | `docker compose --profile tools up flower` → http://localhost:5555 |
 
 Atalhos: `make dev`, `make stop`, `make logs`, `make migrate`, `make shell`.
@@ -122,5 +123,7 @@ para trocar portas do host ou rodar backend/testes nativamente. Grupos: Django (
 | Porta em uso | serviço local conflitante | mudar a porta no `.env` (ex.: `POSTGRES_HOST_PORT=15432`) e o `DATABASE_URL` correspondente |
 | `backend:test` "passa" sem banco | resultado veio do cache do moon | `moon run backend:test --force` |
 | `pnpm add` falha com `MINIMUM_RELEASE_AGE_VIOLATION` | versão publicada há menos de 1 dia | usar a versão anterior |
+| Nenhum evento é processado e nenhum e-mail sai; `rabbitmqctl list_connections` mostra `blocked` | alarme de disco do RabbitMQ (host com pouco espaço): ele para de aceitar publicações; o `/health/ready` não detecta | liberar espaço (ex.: `docker builder prune`); o alarme some sozinho e o outbox entrega o que ficou pendente |
+| Mailpit não sobe: porta 1025/8025 em uso | outro Mailpit na máquina | `MAILPIT_SMTP_HOST_PORT` / `MAILPIT_UI_HOST_PORT` no `.env` |
 | Página 404 em HTML no navegador | `DEBUG=True` mostra a página de debug do Django | esperado em dev; com `DEBUG=False` a resposta é JSON |
 | `celery-worker` sai com `Connection reset by peer`; RabbitMQ registra `no_exists` (`rabbit_vhost`, `rabbit_runtime_parameters`) mas segue "healthy" | o banco de metadados do RabbitMQ ficou inconsistente (visto após o host suspender com o stack no ar); `rabbitmq-diagnostics ping` não detecta | `docker compose restart rabbitmq`; os serviços Celery têm `restart: unless-stopped` e voltam sozinhos |

@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { CircleCheck, CircleSlash, Pencil, Plus, UserX, Users } from '@lucide/vue'
+import {
+  CircleCheck,
+  CircleSlash,
+  MailWarning,
+  Pencil,
+  Plus,
+  Send,
+  UserX,
+  Users,
+} from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -17,7 +26,12 @@ import { useSessionStore } from '@/modules/auth/stores/session'
 import { ROLES, type Role } from '@/modules/auth/types'
 import { USERS_PAGE_SIZE } from '@/modules/users/api/usersApi'
 import UserFormDialog from '@/modules/users/components/UserFormDialog.vue'
-import { useSetUserActive, useUsersList } from '@/modules/users/composables/useUsers'
+import { useToastStore } from '@/app/stores/toasts'
+import {
+  useResendInvitation,
+  useSetUserActive,
+  useUsersList,
+} from '@/modules/users/composables/useUsers'
 import type { User, UserFilters, UserStatusFilter } from '@/modules/users/types'
 import { formatDateTime } from '@/utils/datetime'
 
@@ -76,6 +90,17 @@ const toggle = useActivationToggle<User>({
 })
 
 const isSelf = (user: User) => user.id === session.user?.id
+
+const toasts = useToastStore()
+const resend = useResendInvitation()
+async function onResend(user: User) {
+  try {
+    await resend.mutateAsync(user.id)
+    toasts.success(t('users.feedback.invitationResent', { email: user.email }))
+  } catch (cause) {
+    toasts.error(errorMessage(cause))
+  }
+}
 </script>
 
 <template>
@@ -137,6 +162,13 @@ const isSelf = (user: User) => user.id === session.user?.id
       <template #cell-team="{ row }">{{ row.team?.name ?? '—' }}</template>
       <template #cell-status="{ row }">
         <StatusBadge
+          v-if="row.is_active && row.invitation_pending"
+          :label="t('users.status.invitationPending')"
+          :icon="MailWarning"
+          tone="warning"
+        />
+        <StatusBadge
+          v-else
           :label="row.is_active ? t('users.status.active') : t('users.status.inactive')"
           :icon="row.is_active ? CircleCheck : CircleSlash"
           :tone="row.is_active ? 'success' : 'neutral'"
@@ -149,6 +181,18 @@ const isSelf = (user: User) => user.id === session.user?.id
       </template>
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-1">
+          <BaseButton
+            v-if="row.is_active && row.invitation_pending"
+            variant="ghost"
+            size="sm"
+            :disabled="resend.isPending.value"
+            @click="onResend(row)"
+          >
+            <Send class="size-4" aria-hidden="true" />
+            <span class="sr-only">
+              {{ t('users.actions.resendInvitation', { name: row.full_name }) }}
+            </span>
+          </BaseButton>
           <BaseButton variant="ghost" size="sm" @click="openForm(row)">
             <Pencil class="size-4" aria-hidden="true" />
             <span class="sr-only">{{ t('users.actions.editUser', { name: row.full_name }) }}</span>
