@@ -180,6 +180,7 @@ modules = [
     "apps.payments.api",
     "apps.notifications.api",
     "apps.dashboard.api",
+    "apps.audit.api",
 ]
 
 [[tool.importlinter.contracts]]
@@ -368,5 +369,49 @@ source_modules = [
     "apps.payments",
     "apps.shipping",
     "apps.notifications",
+    "apps.audit",
 ]
 forbidden_modules = ["apps.dashboard"]
+
+[[tool.importlinter.contracts]]
+name = "audit: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.audit.api",
+    "apps.audit.application",
+    "apps.audit.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "ninguém depende de audit (só reage a eventos)"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+    "apps.notifications",
+    "apps.dashboard",
+]
+forbidden_modules = ["apps.audit"]
+
+[[tool.importlinter.contracts]]
+name = "audit lê outros módulos só pela camada pública"
+type = "forbidden"
+source_modules = ["apps.audit"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.payments",
+    "apps.notifications",
+    "apps.dashboard",
+]
+allow_indirect_imports = true
+ignore_imports = ["apps.audit.tests.** -> apps.**"]

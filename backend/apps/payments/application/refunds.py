@@ -7,6 +7,7 @@ import structlog
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from apps.payments.application import trail
 from apps.payments.domain.events import PaymentRefunded, RefundRequested
 from apps.payments.domain.exceptions import RefundNotManual, RefundNotRetryable
 from apps.payments.domain.policies import assert_payment_transition, assert_refund_transition
@@ -46,6 +47,7 @@ def request_refund(
             )
     except IntegrityError:  # P5: outra transação criou o estorno ao mesmo tempo
         return payment.refunds.get(status__in=[RefundStatus.PENDING, RefundStatus.SUCCEEDED])
+    trail.refund_changed(refund, None, actor_id, reason)
     publish(RefundRequested(organization_id=organization_id, refund_id=refund.id))
     logger.info("payments.refund.requested", refund_id=str(refund.id))
     return refund
@@ -64,17 +66,19 @@ def process_refund(refund_id: UUID) -> Refund:
     refund.attempts += 1
     refund.provider_reference = result.provider_reference
     if result.status == "SUCCEEDED":
-        _complete(refund)
+        _complete(refund, actor_id=None)  # quem concluiu foi o provedor
     else:
         assert_refund_transition(RefundStatus.PENDING, RefundStatus.FAILED)
         refund.status = RefundStatus.FAILED
         refund.failure_reason = result.failure_reason
         refund.save()
+        trail.refund_changed(refund, RefundStatus.PENDING, None, result.failure_reason)
         logger.warning("payments.refund.failed", refund_id=str(refund.id))
     return refund
 
 
-def _complete(refund: Refund) -> None:
+def _complete(refund: Refund, *, actor_id: UUID | None) -> None:
+    previous = refund.status
     assert_refund_transition(RefundStatus(refund.status), RefundStatus.SUCCEEDED)
     refund.status = RefundStatus.SUCCEEDED
     refund.failure_reason = ""
@@ -84,6 +88,8 @@ def _complete(refund: Refund) -> None:
     assert_payment_transition(PaymentStatus(payment.status), PaymentStatus.REFUNDED)
     payment.status = PaymentStatus.REFUNDED
     payment.save(update_fields=["status", "updated_at"])
+    trail.refund_changed(refund, previous, actor_id)
+    trail.payment_changed(payment, PaymentStatus.APPROVED, actor_id)
     publish(
         PaymentRefunded(
             organization_id=refund.organization_id,
@@ -109,6 +115,7 @@ def retry_refund(organization_id: UUID, actor_id: UUID, refund_id: UUID) -> Refu
         refund.failure_reason = ""  # o motivo era da tentativa anterior
         refund.requested_by_id = actor_id
         refund.save()
+        trail.refund_changed(refund, RefundStatus.FAILED, actor_id, "nova tentativa")
         publish(RefundRequested(organization_id=organization_id, refund_id=refund.id))
     return refund
 
@@ -125,5 +132,5 @@ def confirm_manual_refund(organization_id: UUID, actor_id: UUID, refund_id: UUID
         if refund.status != RefundStatus.PENDING or refund.payment.method != PaymentMethod.MANUAL:
             raise RefundNotManual()
         refund.requested_by_id = refund.requested_by_id or actor_id
-        _complete(refund)
+        _complete(refund, actor_id=actor_id)
     return refund

@@ -12,6 +12,7 @@ import {
   PackageCheck,
   Users,
   UsersRound,
+  ScrollText,
   Wallet,
   Warehouse,
 } from '@lucide/vue'
@@ -78,4 +79,5 @@ export const primaryNavigation: NavigationItem[] = [
   },
   { routeName: 'users', labelKey: 'nav.users', icon: Users, permission: 'users:manage' },
   { routeName: 'teams', labelKey: 'nav.teams', icon: UsersRound, permission: 'users:manage' },
+  { routeName: 'audit', labelKey: 'nav.audit', icon: ScrollText, permission: 'audit:read' },
 ]

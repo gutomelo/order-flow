@@ -15,6 +15,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from apps.payments.application import trail
 from apps.payments.application.charges import settle
 from apps.payments.domain.gateway import GatewayUnavailable
 from apps.payments.domain.policies import reconciliation_delay
@@ -60,6 +61,11 @@ def reconcile_payment(payment_id: UUID, *, now: datetime) -> str:
         else:
             locked.next_attempt_at = now + reconciliation_delay(locked.attempts)
         locked.save()
+        if locked.status == PaymentStatus.FAILED:
+            cause = (
+                "provedor não conhece a cobrança" if provider_answered else "provedor sem resposta"
+            )
+            trail.payment_changed(locked, PaymentStatus.PENDING, None, cause)
         return locked.status
 
 

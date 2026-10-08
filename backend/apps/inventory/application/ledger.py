@@ -15,7 +15,7 @@ from uuid import UUID
 
 from django.db import connection
 
-from apps.inventory.domain.events import StockLevelLow
+from apps.inventory.domain.events import StockChanged, StockLevelLow
 from apps.inventory.domain.exceptions import WarehouseInactive, WarehouseNotFound
 from apps.inventory.domain.movements import MovementType
 from apps.inventory.domain.stock import StockBalance, crossed_reorder_point
@@ -73,6 +73,12 @@ def lock_stock_items(organization_id: UUID, **filters: object) -> list[StockItem
     )
 
 
+# Movimentos feitos por uma pessoa: entram na auditoria (os do pedido são auditados pelo pedido).
+MANUAL_MOVEMENTS = frozenset(
+    {MovementType.PURCHASE, MovementType.ADJUSTMENT, MovementType.TRANSFER}
+)
+
+
 def post_movement(
     item: StockItem,
     movement_type: MovementType,
@@ -103,7 +109,7 @@ def post_movement(
                 reorder_point=item.reorder_point,
             )
         )
-    return StockMovement.objects.create(
+    movement = StockMovement.objects.create(
         organization_id=item.organization_id,
         stock_item=item,
         type=movement_type,
@@ -117,3 +123,19 @@ def post_movement(
         performed_by_id=actor_id,
         request_id=get_request_id() or "",
     )
+    if movement_type in MANUAL_MOVEMENTS:
+        publish(
+            StockChanged(
+                organization_id=item.organization_id,
+                stock_item_id=item.id,
+                movement_id=movement.id,
+                movement_type=movement_type.value,
+                on_hand_before=before.on_hand,
+                on_hand_after=balance.on_hand,
+                reserved_before=before.reserved,
+                reserved_after=balance.reserved,
+                actor_id=actor_id,
+                reason=reason,
+            )
+        )
+    return movement

@@ -14,13 +14,12 @@ código e documento é um defeito (de um dos dois). Atualize o documento no mesm
 | [orders.md](orders.md) | Ciclo de vida do pedido, máquina de estados, totais, cancelamento, devolução | Vigente |
 | [inventory.md](inventory.md) | Saldo, reservas, movimentações, concorrência, expiração | Vigente |
 | [shipping.md](shipping.md) | Remessa, etiqueta e rastreio da transportadora, entrega manual | Vigente |
+| [audit.md](audit.md) | Trilha de auditoria de pedidos, dinheiro e estoque: ações, antes/depois, append-only, retenção | Vigente |
 | [dashboard.md](dashboard.md) | Indicadores (pedidos, funil, faturamento líquido, estoque baixo), períodos, cache | Vigente |
 | [notifications.md](notifications.md) | Avisos por e-mail a partir de eventos, destinatários, envio com retry e histórico | Vigente |
 | [payments.md](payments.md) | Cobrança por cartão (gateway) e baixa manual, estornos, reconciliação, eventos | Vigente |
 
-Documentos a criar nas fases correspondentes (template `.claude/templates/domain-doc.md`):
-
-`audit.md` (Phase 12).
+Novos documentos de domínio usam o template `.claude/templates/domain-doc.md`.
 
 A visão geral dos módulos, suas fronteiras e dependências está em
 [../architecture/domain-model.md](../architecture/domain-model.md).

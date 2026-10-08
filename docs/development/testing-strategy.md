@@ -151,6 +151,14 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   500 mil pedidos (ADR-014). O E2E achou: texto de variação reprovado em contraste (cor de status em
   texto), frase sem sentido no "sem base" e rolagem horizontal no celular.
 
+- Phase 12: 13 mutações no backend (pedido sem autor, resultado síncrono sem autor, retenção
+  ignorando o prazo ou sem liberar o trigger, reserva entrando como estoque manual, ponto igual
+  registrando, evento sem `request_id`, rótulo virando id, nova tentativa e falha da reconciliação
+  fora da trilha, pagamento sem pedido relacionado, cancelamento como mudança comum, confirmação
+  manual sem autor) e 7 no frontend — todas detectadas. O teste de retenção precisou ser
+  transacional: `set_config(..., true)` vale até o fim da transação, e no teste comum (uma
+  transação só) a permissão de apagar continuaria ligada — em produção a limpeza faz commit.
+
 ## Teste de concorrência — esqueleto
 
 ```python

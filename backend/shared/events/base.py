@@ -7,6 +7,13 @@ from uuid import UUID, uuid4
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 
+from shared.logging import get_request_id
+
+
+def _current_request_id() -> str:
+    # Liga o evento à requisição que o originou (auditoria, logs); vazio em jobs do sistema.
+    return get_request_id() or ""
+
 
 @dataclass(frozen=True, kw_only=True)
 class DomainEvent:
@@ -21,6 +28,7 @@ class DomainEvent:
 
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=timezone.now)
+    request_id: str = field(default_factory=_current_request_id)
 
     def payload(self) -> dict[str, Any]:
         data = asdict(self)

@@ -12,7 +12,9 @@ português, mas ao citar código usa o nome exato. Termos novos entram aqui no m
 | Equipe | `Team` | Agrupamento de usuários (ex.: equipe comercial Sul) |
 | Papel | `Role` | Conjunto nomeado de permissões (`ADMIN`, `MANAGER`, `SALES`, `WAREHOUSE`, `FINANCE`, `VIEWER`) |
 | Permissão | `Permission` | Capacidade `resource:action` (ex.: `orders:cancel`) |
-| Registro de auditoria | `AuditLog` | Registro imutável de operação relevante |
+| Registro de auditoria | `AuditLog` | Registro imutável de operação relevante (quem, o quê, quando, antes/depois, motivo) |
+| Trilha de auditoria | `GET /audit-logs` | Sequência dos registros; append-only no banco |
+| Retenção | `AUDIT_RETENTION_DAYS` | Tempo que a trilha é guardada (5 anos) |
 
 ## Comercial
 

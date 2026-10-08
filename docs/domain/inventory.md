@@ -247,10 +247,11 @@ com pedidos); os movimentos já são o registro completo, e cada operação gera
 
 | Evento | Quando | Consumidores |
 | --- | --- | --- |
-| `StockReserved` | reserva criada | audit |
-| `StockReleased` | reserva liberada por cancelamento | audit |
-| `StockReservationExpired` | reserva expirada | audit, notifications (vendedor) |
-| `StockAdjusted` | ajuste manual | audit (`STOCK_ADJUSTED`) |
+| `inventory.stock.changed` ✅ | movimento **manual** (recebimento, ajuste, transferência) com saldo antes/depois, autor e motivo — publicado por `post_movement` | audit (Phase 12) |
+| `inventory.reorder_point.changed` ✅ | ponto de reposição alterado (`update_reorder_point`, só quando o valor muda; antes ficava na view) | audit (Phase 12) |
+
+Reserva, liberação e venda não têm evento próprio: são efeito do pedido (auditado pelas transições
+dele) e estão no ledger.
 | `inventory.stock.low` ✅ | `available` **cruzou** `reorder_point` para baixo (`crossed_reorder_point`; um aviso por queda, `reorder_point = 0` desliga), publicado por `post_movement` na transação do movimento | notifications (Phase 10); dashboard |
 
 ## Erros de domínio

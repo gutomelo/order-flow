@@ -93,6 +93,8 @@ transitória; recusa do provedor → `FAILED`, visível ao financeiro, que pode 
 | `payments.payment.approved` | pagamento aprovado (síncrono, manual ou reconciliado) | `orders`: aplica o resultado (`PAID`, ou estorno se o pedido não pode mais ser pago) |
 | `payments.refund.requested` | estorno criado | `payments`: executa no gateway (I/O fora da transação de quem pediu) |
 | `payments.payment.refunded` | estorno concluído | `orders`: `CANCELLED → REFUNDED` |
+| `payments.payment.status_changed` | toda mudança de status de pagamento (inclusive a criação), com valor, forma, autor e nota | `audit` (Phase 12) |
+| `payments.refund.status_changed` | toda mudança de status de estorno, com autor e motivo/falha | `audit` (Phase 12) |
 
 ## Casos de uso
 

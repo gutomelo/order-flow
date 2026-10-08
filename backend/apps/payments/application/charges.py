@@ -8,6 +8,7 @@ import structlog
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from apps.payments.application import trail
 from apps.payments.domain.events import PaymentApproved
 from apps.payments.domain.exceptions import PaymentInProgress
 from apps.payments.domain.gateway import ChargeResult, GatewayUnavailable
@@ -35,7 +36,7 @@ def create_pending_card_payment(
     reconciliação acha o pagamento pela chave de idempotência."""
     try:
         with transaction.atomic():
-            return Payment.objects.create(
+            payment = Payment.objects.create(
                 organization_id=organization_id,
                 order_id=order_id,
                 order_reference=order_reference,
@@ -45,6 +46,8 @@ def create_pending_card_payment(
                 next_attempt_at=timezone.now() + FIRST_RECONCILIATION_AFTER,
                 created_by_id=actor_id,
             )
+            trail.payment_changed(payment, None, actor_id)
+            return payment
     except IntegrityError as exc:  # P2
         raise PaymentInProgress() from exc
 
@@ -63,10 +66,11 @@ def execute_charge(payment_id: UUID, card_token: str) -> Payment:
         # Resultado desconhecido: fica PENDING para a reconciliação (resposta 202).
         logger.warning("payments.charge.unconfirmed", payment_id=str(payment.id))
         return payment
-    return settle(payment.id, result)
+    # Resposta síncrona: quem pediu a cobrança é o autor do resultado.
+    return settle(payment.id, result, actor_id=payment.created_by_id)
 
 
-def settle(payment_id: UUID, result: ChargeResult) -> Payment:
+def settle(payment_id: UUID, result: ChargeResult, *, actor_id: UUID | None = None) -> Payment:
     """Grava o resultado do provedor. Idempotente: quem chegar depois (síncrono ou reconciliação)
     encontra o pagamento já resolvido e não faz nada."""
     with transaction.atomic():
@@ -81,6 +85,7 @@ def settle(payment_id: UUID, result: ChargeResult) -> Payment:
         payment.completed_at = timezone.now()
         payment.next_attempt_at = None
         payment.save()
+        trail.payment_changed(payment, PaymentStatus.PENDING, actor_id, result.decline_reason)
         if target == PaymentStatus.APPROVED:
             publish(
                 PaymentApproved(
@@ -117,6 +122,7 @@ def record_manual_payment(
         completed_at=timezone.now(),
         created_by_id=actor_id,
     )
+    trail.payment_changed(payment, None, actor_id, payment.manual_reference)
     publish(
         PaymentApproved(organization_id=organization_id, payment_id=payment.id, order_id=order_id)
     )

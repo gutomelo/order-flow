@@ -267,6 +267,14 @@ Com três listagens (usuários, produtos, fornecedores) o padrão se repetiu e f
 | Seção **Avisos ao cliente** no pedido, com e-mail mascarado; polling enquanto há envio pendente ou o pedido mudou há menos de 1 min | o aviso nasce pelo outbox segundos depois da mudança | polling contínuo |
 | Selo **Convite pendente** e "Reenviar convite" na lista de usuários | o admin precisa saber quem ainda não entrou | — |
 
+### Decisões de implementação (Phase 12)
+
+| Decisão | Problema | Alternativa descartada |
+| --- | --- | --- |
+| Tela **Auditoria** (`audit:read`) em tabela: quando, quem ("Sistema" quando não há autor), ação, item (link para o pedido quando há `order_id`) e detalhes antes → depois | investigar sem abrir cada pedido | linha do tempo por pedido |
+| Valores dos detalhes traduzidos (status pelo i18n do módulo dono, dinheiro em R$) e em ordem fixa (status primeiro) | o `jsonb` do PostgreSQL reordena as chaves (achado no E2E); status cru é ilegível | mostrar o JSON |
+| Filtro por dia no fuso de quem consulta, enviado como limites UTC | o banco é UTC | mandar a data crua |
+
 ### Dashboard (Phase 11)
 
 Responde "o que está acontecendo no negócio?" (`docs/domain/dashboard.md`). Decisões:

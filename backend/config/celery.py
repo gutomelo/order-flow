@@ -45,6 +45,12 @@ app.conf.beat_schedule = {
         "schedule": 300.0,
         "options": {"queue": "maintenance"},
     },
+    # Retenção da auditoria: mensal, de madrugada (docs/domain/audit.md).
+    "purge-expired-audit-logs": {
+        "task": "maintenance.purge_expired_audit_logs",
+        "schedule": crontab(minute=30, hour=3, day_of_month=1),
+        "options": {"queue": "maintenance"},
+    },
     "purge-published-events": {
         "task": "maintenance.purge_published_events",
         "schedule": crontab(minute=50, hour=4),

@@ -32,9 +32,10 @@ Garantias:
 - Falha em handler não desfaz o caso de uso (consistência eventual) e não bloqueia os outros
   handlers do mesmo evento.
 
-Ainda **não implementado** (entra com o primeiro consumidor que precise): modo síncrono
-`in_transaction` para auditoria crítica (Phase 12). Até lá, `OrderStatusHistory` registra
-transacionalmente toda transição de pedido.
+Não há modo síncrono `in_transaction`: a auditoria (Phase 12), que era o caso previsto para ele,
+usa o outbox — o evento já é atômico com a mudança, o registro chega segundos depois e nenhum
+módulo depende de `audit` (`docs/domain/audit.md`). Todo evento leva o `request_id` da requisição
+de origem.
 
 ```mermaid
 sequenceDiagram
@@ -73,7 +74,11 @@ sensíveis. Consumidores que precisam de mais dados consultam o módulo dono pel
 
 | Evento | Produtor | Consumidores | Modo |
 | --- | --- | --- | --- |
-| `orders.order.status_changed` ✅ | orders (`transition()`) | **notifications** (e-mails ao cliente); audit (Phase 12) | outbox |
+| `orders.order.status_changed` ✅ | orders (`transition()`) | **notifications** (e-mails ao cliente); **audit** | outbox |
+| `payments.payment.status_changed` ✅ | payments (toda mudança de status) | **audit** | outbox |
+| `payments.refund.status_changed` ✅ | payments (toda mudança de status) | **audit** | outbox |
+| `inventory.stock.changed` ✅ | inventory (`post_movement`, só recebimento/ajuste/transferência) | **audit** | outbox |
+| `inventory.reorder_point.changed` ✅ | inventory (`update_reorder_point`) | **audit** | outbox |
 | `StockReserved` | inventory | audit | in_transaction |
 | `StockReleased` | inventory | audit | in_transaction |
 | `StockReservationExpired` | inventory | audit, notifications (vendedor) | in_transaction / after_commit |
@@ -88,7 +93,7 @@ sensíveis. Consumidores que precisam de mais dados consultam o módulo dono pel
 | `identity.user.invited` ✅ | identity | **notifications** (convite) | outbox |
 | `identity.password_reset.requested` ✅ | identity | **notifications** (redefinição de senha) | outbox |
 
-✅ = implementado (Phases 8 a 10). Eventos de identidade **nunca** levam token ou link: o e-mail
+✅ = implementado (Phases 8 a 12). Eventos de identidade **nunca** levam token ou link: o e-mail
 gera o link na hora do envio. Os demais são o planejado; nomes seguem `module.entity.action`.
 
 Novos eventos: skill `create-domain-event` e atualização desta tabela.
@@ -123,7 +128,13 @@ gateway confirmar o refund.
 A UI comunica estados intermediários honestamente (ex.: "Reembolso solicitado" enquanto o pedido
 está `CANCELLED` aguardando `PaymentRefunded`).
 
-## Estado atual (Phase 10)
+## Estado atual (Phase 12)
+
+- `audit` consome cinco eventos (pedidos, pagamentos, estornos, estoque manual, ponto de
+  reposição). Os eventos de reserva/liberação/venda continuam sem consumidor: o pedido já é
+  auditado pelas próprias transições e o ledger guarda os movimentos.
+
+### Phase 10
 
 - `notifications` é o primeiro módulo que só consome eventos: sete eventos viram e-mail.
   Handlers criam o registro; o envio é uma task da fila `notifications` após o commit

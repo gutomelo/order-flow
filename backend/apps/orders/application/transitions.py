@@ -39,5 +39,7 @@ def transition(
             order_id=order.id,
             from_status=source.value if source else None,
             to_status=target.value,
+            actor_id=actor_id,
+            reason=reason,
         )
     )

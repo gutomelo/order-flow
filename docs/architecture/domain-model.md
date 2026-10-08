@@ -98,13 +98,12 @@ registros (fonte comum de bugs silenciosos).
 
 ## Auditoria
 
-`AuditLog` registra operações relevantes: `ORDER_CREATED`, `ORDER_CANCELLED`,
-`ORDER_STATUS_CHANGED`, `STOCK_ADJUSTED`, `PAYMENT_REFUNDED`, `USER_PERMISSION_CHANGED`, etc.
-Campos: `actor_id`, `action`, `entity_type`, `entity_id`, `occurred_at`, `request_id`, `changes`
-(JSONB com antes/depois relevantes, sem dados sensíveis), `reason`.
-
-Operações críticas (ajuste de estoque, mudança de permissão, refund) são auditadas **na mesma
-transação** (handler `in_transaction`); demais podem ser `after_commit`.
+`AuditLog` registra pedidos, dinheiro e estoque manual (`ORDER_CREATED`, `ORDER_CANCELLED`,
+`PAYMENT_APPROVED`, `REFUND_COMPLETED`, `STOCK_ADJUSTED`…) com autor, antes/depois (`changes`),
+motivo e `request_id`. Implementado na Phase 12 **por evento no outbox** — o evento nasce na
+transação da mudança, então nada se perde, sem acoplar os módulos a `audit` (o desenho original
+previa handlers síncronos). Append-only no banco; retenção de 5 anos. Detalhes:
+[`docs/domain/audit.md`](../domain/audit.md).
 
 ## Histórico do pedido
 

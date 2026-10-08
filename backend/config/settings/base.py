@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.shipping",
     "apps.notifications",
     "apps.dashboard",
+    "apps.audit",
     "apps.orders",
 ]
 
@@ -256,6 +257,8 @@ NOTIFICATIONS_MAX_ATTEMPTS = env.int("NOTIFICATIONS_MAX_ATTEMPTS", default=5)
 BUSINESS_TIME_ZONE = env("BUSINESS_TIME_ZONE", default="America/Sao_Paulo")
 # Cache dos indicadores por organização + período (0 desliga). Medição em docs/domain/dashboard.md.
 DASHBOARD_CACHE_SECONDS = env.int("DASHBOARD_CACHE_SECONDS", default=60)
+# Retenção da trilha de auditoria (5 anos; docs/domain/audit.md).
+AUDIT_RETENTION_DAYS = env.int("AUDIT_RETENTION_DAYS", default=5 * 365)
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

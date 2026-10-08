@@ -36,6 +36,7 @@ from apps.inventory.application.commands.receive_stock import (
     ReceiveStock,
     ReceiveStockCommand,
 )
+from apps.inventory.application.commands.reorder_point import update_reorder_point
 from apps.inventory.application.commands.transfer_stock import (
     TransferStock,
     TransferStockCommand,
@@ -148,13 +149,16 @@ class StockItemViewSet(
 
     @extend_schema(request=StockItemUpdateSerializer, responses=StockItemSerializer)
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        # Ponto de reposição é configuração, não saldo: não passa pelo ledger.
         item = self.get_object()
         serializer = StockItemUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        item.reorder_point = serializer.validated_data["reorder_point"]
-        item.save(update_fields=["reorder_point", "updated_at"])
-        item.refresh_from_db()  # `available` é calculado pelo banco
+        user: Any = request.user
+        item = update_reorder_point(
+            self.organization_id,
+            UUID(str(user.id)),
+            item.id,
+            serializer.validated_data["reorder_point"],
+        )
         return Response(StockItemSerializer(item).data)
 
 

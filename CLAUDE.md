@@ -4,7 +4,7 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 11 — Dashboard concluída; próxima: Phase 12 — Audit.** Existem a
+**Fase atual: Phase 12 — Audit concluída; próxima: Phase 13 — Observability.** Existem a
 fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT, convite e redefinição de
 senha por e-mail), `customers` (clientes, segmentos, endereços e contatos), `suppliers`, `catalog`
 (produtos e categorias), `inventory` (depósitos, saldos, recebimentos, ajustes, transferências, o
@@ -13,8 +13,8 @@ ledger de movimentações e alerta de estoque baixo), `pricing` (tabela padrão 
 expiração, pagamento, cancelamento de pago com estorno, separação, despacho e entrega),
 `payments` (cartão via `PaymentGateway` fake, baixa manual, estornos, reconciliação), `shipping`
 (remessa via `ShippingProvider` fake, rastreio, entrega manual), `notifications` (e-mails a
-partir de eventos, Mailpit em dev) e `dashboard` (indicadores somente leitura, cache por TTL —
-ADR-014). Eventos de negócio usam o Transactional Outbox de
+partir de eventos, Mailpit em dev), `dashboard` (indicadores somente leitura, cache por TTL —
+ADR-014) e `audit` (trilha append-only de pedidos, dinheiro e estoque, por eventos). Eventos de negócio usam o Transactional Outbox de
 `shared/events` (ADR-011). Devolução pós-entrega ainda não existe. Não crie models, endpoints ou
 telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).

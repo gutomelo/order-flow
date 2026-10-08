@@ -239,7 +239,7 @@ A chamada ao gateway **não** acontece dentro de transação com locks:
 
 | Evento | Quando | Payload principal | Consumidores |
 | --- | --- | --- | --- |
-| `orders.order.status_changed` ✅ | **toda** transição, publicada por `transition()` (o único caminho de mudança de status) na mesma transação | `organization_id`, `order_id`, `from_status`, `to_status` | notifications (Phase 10); audit (Phase 12) |
+| `orders.order.status_changed` ✅ | **toda** transição, publicada por `transition()` (o único caminho de mudança de status) na mesma transação | `organization_id`, `order_id`, `from_status`, `to_status` | notifications (Phase 10); audit (Phase 12) — com `actor_id` e `reason` |
 
 Phase 10: em vez de um evento por transição (`OrderCreated`, `OrderPaid`, `OrderShipped`...), um
 evento genérico. Publicar em `transition()` garante que nenhuma transição fique sem evento (O9/O10)

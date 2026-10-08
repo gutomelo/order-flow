@@ -17,6 +17,7 @@ import { dashboardRoutes } from '@/modules/dashboard/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
 import { ordersRoutes } from '@/modules/orders/routes'
 import { paymentsRoutes } from '@/modules/payments/routes'
+import { auditRoutes } from '@/modules/audit/routes'
 import { pricingRoutes } from '@/modules/pricing/routes'
 import { suppliersRoutes } from '@/modules/suppliers/routes'
 import { usersRoutes } from '@/modules/users/routes'
@@ -54,6 +55,7 @@ export const routes: RouteRecordRaw[] = [
       ...suppliersRoutes,
       ...inventoryRoutes,
       ...usersRoutes,
+      ...auditRoutes,
       {
         path: 'forbidden',
         name: 'forbidden',

@@ -56,7 +56,9 @@ clientes da sua equipe") ficam em políticas por módulo aplicadas no `get_query
 | `users:manage` | ✓ | | | | | |
 | `audit:read` | ✓ | ✓ | | | | |
 
-Mudanças de role/permissão de usuário geram `AuditLog` `USER_PERMISSION_CHANGED`.
+Mudanças de role/permissão de usuário: hoje só log estruturado (`identity.user.role_changed`);
+o registro `AuditLog` `USER_PERMISSION_CHANGED` ficou para depois (escopo da Phase 12 foi
+pedidos, dinheiro e estoque — `docs/domain/audit.md`, questões em aberto).
 A matriz é testada (teste parametrizado por role × endpoint).
 
 ## Isolamento entre organizações (multi-tenancy)
@@ -176,6 +178,14 @@ recusado (`docs/domain/payments.md`).
 - O cache é por organização (nunca por usuário) e guarda tudo; a seção sem permissão é removida
   **depois** de ler o cache. Teste: o vendedor nunca recebe a seção de dinheiro que um gerente
   colocou no cache; outra organização nunca recebe números de outra.
+
+## Auditoria (Phase 12)
+
+- Trilha append-only no banco (trigger): nem admin, nem script, nem código alteram ou apagam um
+  registro; só a limpeza de retenção, liberada por `set_config` na própria transação. Testado.
+- Leitura só com `audit:read` (ADMIN, MANAGER), escopada por organização; API sem escrita (405).
+- Registros sem dados sensíveis: ids, valores, status e motivos — nunca token, senha, cartão ou
+  dados pessoais de contato.
 
 ## Revisão
 
