@@ -3,6 +3,7 @@ from django.urls import URLPattern, URLResolver, include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from shared.infrastructure import health
+from shared.observability.metrics import metrics_view
 
 # Rotas versionadas da API: cada módulo inclui as suas aqui.
 api_v1_patterns: list[URLPattern | URLResolver] = [
@@ -26,6 +27,7 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("health/live", health.live, name="health-live"),
     path("health/ready", health.ready, name="health-ready"),
+    path("metrics", metrics_view, name="metrics"),
     path("admin/", admin.site.urls),
 ]
 

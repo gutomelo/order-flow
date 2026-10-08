@@ -173,6 +173,7 @@ Arquivo: [`docker-compose.yml`](../../docker-compose.yml). Dockerfiles em `infra
 | `celery-beat` | mesma imagem | schedule em `/tmp` (o usuário do container não escreve no código montado) |
 | `frontend` | `frontend.Dockerfile` (target `dev`) | Vite com proxy de `/api` e `/health` para `backend:8000` |
 | `flower` | mesma imagem do backend | opcional: `docker compose --profile tools up flower` |
+| `prometheus`, `grafana`, `jaeger` | imagens oficiais | perfil `observability` (ADR-015); configuração em `infra/observability/` |
 
 - Funciona **sem `.env`** (defaults locais). Portas do host configuráveis via `.env`
   (`POSTGRES_HOST_PORT`, `BACKEND_HOST_PORT`...), úteis quando 5432/6379 já estão em uso.

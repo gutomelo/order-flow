@@ -3,9 +3,21 @@ nasce com ela no outbox (ADR-011) e nunca sobra nem falta."""
 
 from uuid import UUID
 
+from prometheus_client import Counter
+
 from apps.payments.domain.events import PaymentStatusChanged, RefundStatusChanged
 from apps.payments.models import Payment, Refund
 from shared.events.bus import publish
+from shared.observability.metrics import count_after_commit
+
+PAYMENTS = Counter(
+    "orderflow_payment_status_changes_total",
+    "Mudanças de status de pagamento confirmadas, por forma e status",
+    ["method", "status"],
+)
+REFUNDS = Counter(
+    "orderflow_refund_status_changes_total", "Mudanças de status de estorno confirmadas", ["status"]
+)
 
 
 def payment_changed(
@@ -25,6 +37,7 @@ def payment_changed(
             note=note,
         )
     )
+    count_after_commit(PAYMENTS, method=payment.method, status=payment.status)
 
 
 def refund_changed(
@@ -45,3 +58,4 @@ def refund_changed(
             note=note,
         )
     )
+    count_after_commit(REFUNDS, status=refund.status)

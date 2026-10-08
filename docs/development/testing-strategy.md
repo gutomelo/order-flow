@@ -159,6 +159,16 @@ temporariamente e confirme que o teste **falha** (e falha rápido):
   transacional: `set_config(..., true)` vale até o fim da transação, e no teste comum (uma
   transação só) a permissão de apagar continuaria ligada — em produção a limpeza faz commit.
 
+- Phase 13: 12 mutações (contar antes do commit, entrega sem correlation ou sem contexto do
+  trace, alarme do broker ignorado ou com 503 tratado como ok, token do `/metrics` ignorado,
+  mensagem Celery sem o id, contexto vazando entre tasks, evento sem `traceparent`, erros da API
+  não contados, log sem `trace_id`, multiprocesso sem os gauges do banco) — todas detectadas. O
+  E2E achou o que o teste unitário escondia: o header `correlation_id` colide com a propriedade
+  AMQP que o Celery preenche com o id da task (o teste simulava a task sem essa propriedade; agora
+  simula). Também verificados no ambiente real: trace único API → outbox → worker → e-mail no
+  Jaeger, alarme de disco do RabbitMQ disparando `OrderflowDependencyDown`, regras com `promtool`
+  e a imagem de produção (gunicorn, 3 workers) somando as métricas.
+
 ## Teste de concorrência — esqueleto
 
 ```python

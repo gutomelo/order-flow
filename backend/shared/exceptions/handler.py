@@ -16,6 +16,7 @@ from rest_framework.views import set_rollback
 from shared.exceptions.base import DomainError
 from shared.exceptions.envelope import error_envelope
 from shared.logging.context import get_request_id
+from shared.observability.metrics import API_ERRORS
 
 logger = structlog.get_logger(__name__)
 
@@ -39,6 +40,13 @@ INTERNAL_ERROR_MESSAGE = "Ocorreu um erro inesperado. Tente novamente mais tarde
 
 
 def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
+    response = _handle(exc, context)
+    error = response.data.get("error", {}) if isinstance(response.data, dict) else {}
+    API_ERRORS.labels(code=error.get("code", "UNKNOWN"), status=str(response.status_code)).inc()
+    return response
+
+
+def _handle(exc: Exception, context: dict[str, Any]) -> Response:
     if isinstance(exc, DomainError):
         set_rollback()
         return Response(error_envelope(exc.code, exc.message, exc.details), status=exc.http_status)

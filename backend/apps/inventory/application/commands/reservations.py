@@ -13,6 +13,7 @@ import structlog
 from django.conf import settings
 from django.db import OperationalError, transaction
 from django.utils import timezone
+from prometheus_client import Counter
 
 from apps.inventory.application.ledger import (
     lock_stock_items,
@@ -33,6 +34,10 @@ from apps.inventory.models import StockReservation
 from shared.infrastructure.db import is_lock_timeout, set_local_lock_timeout
 
 logger = structlog.get_logger(__name__)
+
+STOCK_BUSY = Counter(
+    "orderflow_stock_busy_total", "Reservas recusadas por disputa de lock (STOCK_BUSY)"
+)
 
 REFERENCE_TYPE = "ORDER"
 
@@ -64,6 +69,7 @@ def reserve_stock(command: ReserveStockCommand) -> list[StockReservation]:
             return _reserve(command)
     except OperationalError as exc:
         if is_lock_timeout(exc):  # disputa longa por um item: falha rápida e re-tentável
+            STOCK_BUSY.inc()
             raise StockBusy() from exc
         raise
 

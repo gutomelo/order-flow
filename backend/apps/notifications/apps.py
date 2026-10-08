@@ -10,3 +10,6 @@ class NotificationsConfig(AppConfig):
     def ready(self) -> None:
         # Registra os handlers de eventos (outbox) deste módulo.
         import apps.notifications.application.handlers  # noqa: F401
+        from apps.notifications.application.metrics import register
+
+        register()

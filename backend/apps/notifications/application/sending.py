@@ -17,6 +17,7 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.utils import timezone
 
+from apps.notifications.application.metrics import SEND_OUTCOMES
 from apps.notifications.application.queueing import enqueue_send
 from apps.notifications.application.rendering import build_email
 from apps.notifications.domain.kinds import NotificationStatus
@@ -64,6 +65,7 @@ def send_notification(notification_id: UUID) -> str:
             if notification.attempts >= settings.NOTIFICATIONS_MAX_ATTEMPTS:
                 notification.status = NotificationStatus.FAILED
             notification.save()
+            SEND_OUTCOMES.labels(kind=notification.kind, outcome=notification.status.lower()).inc()
             logger.warning(
                 "notifications.notification.send_failed",
                 notification_id=str(notification.id),
@@ -75,6 +77,7 @@ def send_notification(notification_id: UUID) -> str:
         notification.sent_at = timezone.now()
         notification.last_error = ""
         notification.save()
+        SEND_OUTCOMES.labels(kind=notification.kind, outcome="sent").inc()
     logger.info("notifications.notification.sent", notification_id=str(notification_id))
     return NotificationStatus.SENT
 

@@ -34,8 +34,9 @@ Garantias:
 
 Não há modo síncrono `in_transaction`: a auditoria (Phase 12), que era o caso previsto para ele,
 usa o outbox — o evento já é atômico com a mudança, o registro chega segundos depois e nenhum
-módulo depende de `audit` (`docs/domain/audit.md`). Todo evento leva o `request_id` da requisição
-de origem.
+módulo depende de `audit` (`docs/domain/audit.md`). Todo evento leva o `request_id`, o `correlation_id`
+e o contexto do trace (`traceparent`) da origem: a entrega religa os ids nos logs e continua o
+trace (ADR-015).
 
 ```mermaid
 sequenceDiagram

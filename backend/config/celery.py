@@ -10,6 +10,9 @@ from celery import Celery
 from celery.schedules import crontab
 from kombu import Queue
 
+# Sinais de observabilidade (correlação, métricas e tracing do worker; ADR-015).
+import shared.observability.celery  # noqa: F401
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
 app = Celery("orderflow")

@@ -6,3 +6,8 @@ class EventsConfig(AppConfig):
     name = "shared.events"
     label = "events"
     verbose_name = "Domain events (outbox)"
+
+    def ready(self) -> None:
+        from shared.events.metrics import register
+
+        register()

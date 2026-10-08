@@ -31,6 +31,24 @@ docker compose exec backend python manage.py createsuperuser
 | Health | http://localhost:8000/health/ready |
 | RabbitMQ management | http://localhost:15672 |
 | Mailpit (e-mails enviados em dev) | http://localhost:8025 (SMTP em 1025) |
+| Métricas da API / do worker | http://localhost:8000/metrics · `celery-worker:9100` (rede do Compose) |
+
+### Observabilidade (perfil `observability`, ADR-015)
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 docker compose --profile observability up
+```
+
+| Serviço | URL |
+| --- | --- |
+| Grafana (painel "OrderFlow — visão geral", leitura sem login) | http://localhost:3000 (admin: `GRAFANA_ADMIN_PASSWORD`) |
+| Prometheus (alvos, alertas) | http://localhost:9090/targets · http://localhost:9090/alerts |
+| Jaeger (traces `orderflow-api` / `orderflow-worker`) | http://localhost:16686 |
+
+Sem `OTEL_EXPORTER_OTLP_ENDPOINT` o tracing fica desligado (nenhum erro de exportação nos logs).
+Para seguir uma requisição: pegue o `X-Request-ID` da resposta → `correlation_id` nos logs do
+worker → `trace_id` no log → trace no Jaeger.
+
 | Flower (opcional) | `docker compose --profile tools up flower` → http://localhost:5555 |
 
 Atalhos: `make dev`, `make stop`, `make logs`, `make migrate`, `make shell`.
@@ -123,7 +141,7 @@ para trocar portas do host ou rodar backend/testes nativamente. Grupos: Django (
 | Porta em uso | serviço local conflitante | mudar a porta no `.env` (ex.: `POSTGRES_HOST_PORT=15432`) e o `DATABASE_URL` correspondente |
 | `backend:test` "passa" sem banco | resultado veio do cache do moon | `moon run backend:test --force` |
 | `pnpm add` falha com `MINIMUM_RELEASE_AGE_VIOLATION` | versão publicada há menos de 1 dia | usar a versão anterior |
-| Nenhum evento é processado e nenhum e-mail sai; `rabbitmqctl list_connections` mostra `blocked` | alarme de disco do RabbitMQ (host com pouco espaço): ele para de aceitar publicações; o `/health/ready` não detecta | liberar espaço (ex.: `docker builder prune`); o alarme some sozinho e o outbox entrega o que ficou pendente |
+| Nenhum evento é processado e nenhum e-mail sai; `rabbitmqctl list_connections` mostra `blocked` | alarme de disco do RabbitMQ (host com pouco espaço): ele para de aceitar publicações. Desde a Phase 13 o `/health/ready` mostra `broker: unavailable` e o alerta `OrderflowDependencyDown` dispara | liberar espaço (ex.: `docker builder prune`); o alarme some sozinho e o outbox entrega o que ficou pendente |
 | Mailpit não sobe: porta 1025/8025 em uso | outro Mailpit na máquina | `MAILPIT_SMTP_HOST_PORT` / `MAILPIT_UI_HOST_PORT` no `.env` |
 | Página 404 em HTML no navegador | `DEBUG=True` mostra a página de debug do Django | esperado em dev; com `DEBUG=False` a resposta é JSON |
 | `celery-worker` sai com `Connection reset by peer`; RabbitMQ registra `no_exists` (`rabbit_vhost`, `rabbit_runtime_parameters`) mas segue "healthy" | o banco de metadados do RabbitMQ ficou inconsistente (visto após o host suspender com o stack no ar); `rabbitmq-diagnostics ping` não detecta | `docker compose restart rabbitmq`; os serviços Celery têm `restart: unless-stopped` e voltam sozinhos |

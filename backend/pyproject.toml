@@ -10,11 +10,18 @@ dependencies = [
     "django-cors-headers>=4.9",
     "django-environ>=0.14",
     "django-filter>=26.2",
+    "django-prometheus>=2.5.0",
     "django-stubs-ext>=5.2,<5.3",
     "djangorestframework>=3.18,<3.19",
     "djangorestframework-simplejwt>=5.5",
     "drf-spectacular>=0.30",
     "gunicorn>=26.2",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-instrumentation-celery>=0.66b1",
+    "opentelemetry-instrumentation-django>=0.66b1",
+    "opentelemetry-instrumentation-psycopg>=0.66b1",
+    "opentelemetry-instrumentation-redis>=0.66b1",
+    "opentelemetry-sdk>=1.45.1",
     "psycopg[binary]>=3.3",
     "redis>=6",
     "structlog>=26.1",
@@ -90,7 +97,14 @@ plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 exclude = ["/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["environ.*", "factory.*", "drf_spectacular.*", "django_filters.*", "corsheaders.*"]
+module = [
+    "environ.*",
+    "factory.*",
+    "drf_spectacular.*",
+    "django_filters.*",
+    "corsheaders.*",
+    "django_prometheus.*",
+]
 ignore_missing_imports = true
 
 # factory_boy reexporta a API em `factory/__init__.py` sem `__all__`.

@@ -30,5 +30,7 @@ RUN uv sync --locked --no-dev
 COPY backend/ ./
 USER app
 EXPOSE 8000
-ENV DJANGO_SETTINGS_MODULE=config.settings.production
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
+ENV DJANGO_SETTINGS_MODULE=config.settings.production \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus-api
+# Métricas dos 3 workers somadas (ADR-015): o diretório começa vazio a cada início do container.
+CMD ["sh", "-c", "rm -rf \"$PROMETHEUS_MULTIPROC_DIR\" && mkdir -p \"$PROMETHEUS_MULTIPROC_DIR\" && exec gunicorn config.wsgi:application -c config/gunicorn.conf.py --bind 0.0.0.0:8000 --workers 3 --access-logfile -"]

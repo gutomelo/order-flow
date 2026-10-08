@@ -41,18 +41,22 @@ requisições. Um processador remove chaves sensíveis conhecidas (`password`, `
 
 - Middleware gera `request_id` (UUID) por requisição — ou aceita `X-Request-ID` do cliente se
   válido — e devolve no header de resposta.
-- `correlation_id` acompanha o fluxo inteiro: nasce com o `request_id` e é propagado para
-  Domain Events (`DomainEvent.correlation_id`), headers das tasks Celery e logs dos workers.
-- Ambos são vinculados ao contexto do structlog (`contextvars`), aparecendo em todo log do fluxo.
-- Implementado na Phase 1: middleware, header de resposta e logs. A propagação para Celery
-  (headers da task + `task_prerun`) entra junto com a primeira task real.
-- `AuditLog.request_id` liga auditoria a logs.
+- `correlation_id` acompanha o fluxo inteiro (Phase 13, ADR-015):
+  - todo `DomainEvent` leva `request_id`, `correlation_id` e `trace_context` (W3C `traceparent`);
+  - a entrega do evento (`shared.events.bus.deliver`) religa os dois ids no contexto dos logs e
+    abre um span filho do trace da origem;
+  - tasks Celery levam o id no header `orderflow_correlation_id` (`before_task_publish`) e o
+    worker o religa no `task_prerun` (com `task_id` e `task_name`). Não pode ser
+    `correlation_id`: o Celery usa essa propriedade AMQP para o id da própria task.
+- Com tracing ligado, todo log tem `trace_id`/`span_id`: do log se chega ao trace no Jaeger.
+- `AuditLog.request_id` liga auditoria a logs e traces.
 
 ```mermaid
 flowchart LR
-    req[Request<br/>X-Request-ID] --> api[API log]
-    api --> ev[DomainEvent<br/>correlation_id]
-    ev --> task[Celery task headers]
+    req[Request<br/>X-Request-ID] --> api[API log + span]
+    api --> ev[DomainEvent<br/>request_id · correlation_id · traceparent]
+    ev --> deliver[Worker: entrega do evento<br/>mesmo correlation_id, span filho]
+    deliver --> task[Task Celery<br/>header orderflow_correlation_id]
     task --> wlog[Worker log]
     api --> audit[AuditLog.request_id]
 ```
@@ -62,24 +66,48 @@ flowchart LR
 | Endpoint | Tipo | Verifica | Uso |
 | --- | --- | --- | --- |
 | `GET /health/live` | liveness | processo responde (sem dependências) | reiniciar container travado |
-| `GET /health/ready` | readiness | PostgreSQL (`SELECT 1`), Redis (`PING`), broker alcançável | receber tráfego / `depends_on` |
+| `GET /health/ready` | readiness | PostgreSQL (`SELECT 1`), Redis (`PING`), broker alcançável **e sem alarme** | receber tráfego / `depends_on` |
 
 - Sem autenticação, sem dados sensíveis; resposta `{"status": "ok", "checks": {...}}` com 200/503.
-- Timeouts curtos em cada verificação.
+- Broker: conectar não basta. Com alarme de disco/memória o RabbitMQ aceita a conexão e só bloqueia
+  quem publica (Phase 10: prontidão "ok" e nada andava). Com `RABBITMQ_MANAGEMENT_URL`, a prontidão
+  consulta `/api/health/checks/alarms` — verificado forçando `set_disk_free_limit`.
 - Workers Celery: healthcheck via `celery inspect ping` no Docker Compose.
 
-## Métricas (futuro — Phase 13)
+## Métricas (Phase 13, ADR-015)
 
-Preparação: nomes de eventos de log estáveis já permitem métricas derivadas. Candidatos:
-latência por endpoint (p50/p95/p99), taxa de erros por `code`, pedidos criados/cancelados,
-`INSUFFICIENT_STOCK` por produto, tempo de espera por lock de estoque, tamanho das filas Celery,
-tasks falhas/re-tentadas, reservas expiradas. Exposição via Prometheus (avaliar
-`django-prometheus`) — decisão em ADR na Phase 13.
+`/metrics` na API (com `METRICS_TOKEN`, exige `Authorization: Bearer`) e `:9100` no worker.
 
-## Tracing (futuro — Phase 13)
+| Grupo | Métricas | Origem |
+| --- | --- | --- |
+| HTTP | `django_http_requests_latency_seconds_by_view_method`, `django_http_responses_total_by_status_total`, `orderflow_api_errors_total{code,status}` | django-prometheus; handler de erros |
+| Banco | `django_db_execute_total`, `django_db_errors_total`, `django_db_query_duration_seconds` | wrapper do backend PostgreSQL |
+| Dependências | `orderflow_dependency_up{dependency}` | as checagens da prontidão, a cada coleta |
+| Assíncrono | `orderflow_outbox_pending{measure="count"\|"oldest_age_seconds"}`, `orderflow_events_deliveries_total`, `orderflow_celery_tasks_total{task,outcome}`, `orderflow_celery_task_duration_seconds`, `orderflow_notifications_send_total`, `orderflow_notifications_last_24h{status}` | banco na coleta; worker |
+| Negócio | `orderflow_order_transitions_total{to_status}`, `orderflow_payment_status_changes_total`, `orderflow_refund_status_changes_total`, `orderflow_payments_awaiting_reconciliation`, `orderflow_stock_busy_total`, `orderflow_stock_low_total` | contadas após o commit; banco na coleta |
 
-OpenTelemetry (Django, psycopg, Celery, Redis) com o `correlation_id` como atributo. O
-`correlation_id` atual é o degrau intermediário: rastreabilidade sem infraestrutura extra.
+Regras:
+- Contador de negócio conta **depois do commit** (`count_after_commit`): rollback não aparece.
+- O que já está no banco é **lido na coleta** (`register_gauges`), nunca mantido em contador paralelo.
+- Rótulos de baixa cardinalidade (status, código, task); nunca ids.
+- Vários processos (gunicorn em produção, prefork no worker): `PROMETHEUS_MULTIPROC_DIR`; o
+  `/metrics` soma os arquivos **e** os gauges do banco (testado com a imagem de produção).
+
+## Tracing (Phase 13, ADR-015)
+
+OpenTelemetry (Django, psycopg, Redis, Celery) → OTLP/HTTP (`OTEL_EXPORTER_OTLP_ENDPOINT`;
+desligado sem ele). `health/*` e `metrics` ficam fora. O contexto atravessa o outbox: um
+`POST /orders` mostra, num trace só, as consultas da API, as entregas de eventos no worker
+(auditoria, notificações) e a task que envia o e-mail. Serviços: `orderflow-api`, `orderflow-worker`.
+
+## Painéis e alertas
+
+- Grafana: `infra/observability/grafana/` (fontes Prometheus e Jaeger, painel "OrderFlow — visão
+  geral": saúde, API, assíncrono, negócio). O painel é código (`allowUiUpdates: false`).
+- Alertas: `infra/observability/prometheus/alerts.yml` (validados com `promtool`), cada um com o
+  que olhar primeiro: dependência fora, 5xx > 5%, p95 > 1 s, outbox atrasado > 2 min, tasks
+  falhando, e-mails esgotando tentativas, cobranças sem resposta há 30 min, disputa de estoque.
+  `OrderflowDependencyDown` verificado disparando com o alarme de disco do RabbitMQ.
 
 ## Auditoria × logs
 
@@ -88,4 +116,4 @@ OpenTelemetry (Django, psycopg, Celery, Redis) com o `correlation_id` como atrib
 | Propósito | registro de negócio (quem fez o quê) | diagnóstico técnico |
 | Armazenamento | PostgreSQL, imutável | stdout → agregador |
 | Retenção | longa, consultável na UI | curta/média |
-| Garantia | transacional (operações críticas) | best-effort |
+| Garantia | outbox: nunca se perde (ADR-011) | best-effort |

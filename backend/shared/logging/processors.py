@@ -55,3 +55,16 @@ def add_service_name(service: str) -> Any:
         return event_dict
 
     return processor
+
+
+def add_trace_ids(
+    _logger: Any, _method_name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    """`trace_id`/`span_id` do span atual (com tracing ligado): do log se chega ao trace."""
+    from opentelemetry import trace
+
+    context = trace.get_current_span().get_span_context()
+    if context.is_valid:
+        event_dict.setdefault("trace_id", format(context.trace_id, "032x"))
+        event_dict.setdefault("span_id", format(context.span_id, "016x"))
+    return event_dict

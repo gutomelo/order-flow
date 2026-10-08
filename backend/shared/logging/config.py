@@ -10,7 +10,7 @@ from typing import Any
 import structlog
 from structlog.typing import Processor
 
-from shared.logging.processors import add_service_name, redact_sensitive_data
+from shared.logging.processors import add_service_name, add_trace_ids, redact_sensitive_data
 
 
 def _shared_processors(service: str) -> list[Processor]:
@@ -20,6 +20,7 @@ def _shared_processors(service: str) -> list[Processor]:
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         add_service_name(service),
+        add_trace_ids,
         redact_sensitive_data,
     ]
 

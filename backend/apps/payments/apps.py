@@ -10,3 +10,6 @@ class PaymentsConfig(AppConfig):
     def ready(self) -> None:
         # Registra os handlers de eventos (outbox) deste módulo.
         import apps.payments.application.handlers  # noqa: F401
+        from apps.payments.application.metrics import register
+
+        register()

@@ -187,6 +187,16 @@ recusado (`docs/domain/payments.md`).
 - Registros sem dados sensíveis: ids, valores, status e motivos — nunca token, senha, cartão ou
   dados pessoais de contato.
 
+## Observabilidade (Phase 13)
+
+- `/metrics` fora da rede pública em produção e, com `METRICS_TOKEN`, exige
+  `Authorization: Bearer` (o Prometheus envia). Métricas não levam ids nem dados pessoais (rótulos
+  de baixa cardinalidade).
+- `RABBITMQ_MANAGEMENT_URL` tem credenciais: só por variável de ambiente; a prontidão nunca expõe
+  o erro (só `unavailable`) e o log registra só o tipo do erro.
+- Traces: spans de consultas trazem o SQL parametrizado (sem valores); o `card_token` nunca entra
+  em atributo. Grafana local com leitura anônima só em dev.
+
 ## Revisão
 
 Toda mudança em auth, permissões, endpoints, serializers, settings ou dependências passa pela skill

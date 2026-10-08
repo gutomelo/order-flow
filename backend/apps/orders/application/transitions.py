@@ -1,10 +1,17 @@
 from uuid import UUID
 
+from prometheus_client import Counter
+
 from apps.orders.domain.events import OrderStatusChanged
 from apps.orders.domain.state_machine import assert_transition
 from apps.orders.domain.status import OrderStatus
 from apps.orders.models import Order, OrderStatusHistory
 from shared.events.bus import publish
+from shared.observability.metrics import count_after_commit
+
+TRANSITIONS = Counter(
+    "orderflow_order_transitions_total", "Transições de pedido confirmadas", ["to_status"]
+)
 
 
 def lock_order(organization_id: UUID, order_id: UUID) -> Order:
@@ -43,3 +50,4 @@ def transition(
             reason=reason,
         )
     )
+    count_after_commit(TRANSITIONS, to_status=target.value)

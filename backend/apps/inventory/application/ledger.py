@@ -14,6 +14,7 @@ from collections.abc import Iterable, Sequence
 from uuid import UUID
 
 from django.db import connection
+from prometheus_client import Counter
 
 from apps.inventory.domain.events import StockChanged, StockLevelLow
 from apps.inventory.domain.exceptions import WarehouseInactive, WarehouseNotFound
@@ -22,6 +23,7 @@ from apps.inventory.domain.stock import StockBalance, crossed_reorder_point
 from apps.inventory.models import StockItem, StockMovement
 from shared.events.bus import publish
 from shared.logging import get_request_id
+from shared.observability.metrics import count_after_commit
 
 
 def lock_warehouses_for_movement(organization_id: UUID, warehouse_ids: Sequence[UUID]) -> None:
@@ -73,6 +75,10 @@ def lock_stock_items(organization_id: UUID, **filters: object) -> list[StockItem
     )
 
 
+STOCK_LOW = Counter(
+    "orderflow_stock_low_total", "Vezes que um item cruzou o ponto de reposição para baixo"
+)
+
 # Movimentos feitos por uma pessoa: entram na auditoria (os do pedido são auditados pelo pedido).
 MANUAL_MOVEMENTS = frozenset(
     {MovementType.PURCHASE, MovementType.ADJUSTMENT, MovementType.TRANSFER}
@@ -101,6 +107,7 @@ def post_movement(
     item.on_hand, item.reserved = balance.on_hand, balance.reserved
     item.save(update_fields=["on_hand", "reserved", "updated_at"])
     if crossed_reorder_point(before.available, balance.available, item.reorder_point):
+        count_after_commit(STOCK_LOW)
         publish(
             StockLevelLow(
                 organization_id=item.organization_id,

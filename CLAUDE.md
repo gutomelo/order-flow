@@ -4,7 +4,7 @@ Plataforma B2B de gestão de pedidos e estoque. Projeto funcional **e** de portf
 precisa ser explicável (problema → solução → alternativas → trade-offs). Nada de CRUD trivial, nada
 de complexidade artificial.
 
-**Fase atual: Phase 12 — Audit concluída; próxima: Phase 13 — Observability.** Existem a
+**Fase atual: Phase 13 — Observability concluída: roadmap inicial completo (Phases 1–13).** Existem a
 fundação técnica, `identity` (tenants, usuários, equipes, RBAC, JWT, convite e redefinição de
 senha por e-mail), `customers` (clientes, segmentos, endereços e contatos), `suppliers`, `catalog`
 (produtos e categorias), `inventory` (depósitos, saldos, recebimentos, ajustes, transferências, o
@@ -14,7 +14,9 @@ expiração, pagamento, cancelamento de pago com estorno, separação, despacho 
 `payments` (cartão via `PaymentGateway` fake, baixa manual, estornos, reconciliação), `shipping`
 (remessa via `ShippingProvider` fake, rastreio, entrega manual), `notifications` (e-mails a
 partir de eventos, Mailpit em dev), `dashboard` (indicadores somente leitura, cache por TTL —
-ADR-014) e `audit` (trilha append-only de pedidos, dinheiro e estoque, por eventos). Eventos de negócio usam o Transactional Outbox de
+ADR-014) e `audit` (trilha append-only de pedidos, dinheiro e estoque, por eventos).
+Observabilidade (ADR-015): métricas Prometheus, tracing OpenTelemetry, correlação ponta a ponta,
+alertas como código e Prometheus/Grafana/Jaeger no perfil `observability` do Compose. Eventos de negócio usam o Transactional Outbox de
 `shared/events` (ADR-011). Devolução pós-entrega ainda não existe. Não crie models, endpoints ou
 telas de fases futuras
 (`docs/architecture/overview.md#roadmap`).

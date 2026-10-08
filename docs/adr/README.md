@@ -22,6 +22,7 @@ Template: `.claude/templates/adr.md` · Criação: skill `/create-adr`.
 | [012](012-idempotency-keys.md) | Idempotency-Key persistida no PostgreSQL | Accepted |
 | [013](013-multi-tenancy.md) | Multi-tenancy com banco compartilhado e escopo explícito por organização | Accepted |
 | [014](014-dashboard-aggregate-cache.md) | Cache por tempo (TTL) dos agregados do dashboard | Accepted |
+| [015](015-observability-stack.md) | Observabilidade com Prometheus, OpenTelemetry e correlação ponta a ponta | Accepted |
 
 ## Status possíveis
 

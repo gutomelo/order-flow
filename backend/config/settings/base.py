@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     # Terceiros
     "corsheaders",
     "django_filters",
+    "django_prometheus",
+    "shared.observability",
     "drf_spectacular",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
@@ -55,6 +57,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Métricas HTTP (ADR-015): o "Before" mede tudo o que vem depois, inclusive os middlewares.
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "shared.logging.middleware.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -64,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -106,6 +111,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Banco de dados (ADR-004)
 # ---------------------------------------------------------------------------
 DATABASES = {"default": env.db("DATABASE_URL")}
+# Wrapper do django-prometheus: duração e erros de consultas viram métrica (ADR-015).
+DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 # Transações explícitas nos use cases; nada de transação implícita por request.
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=60)
@@ -116,6 +123,8 @@ DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
+        # Sem o wrapper de métricas do django-prometheus: ele exige o pacote django-redis
+        # (ADR-015); a prontidão já mede o Redis.
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": env("REDIS_URL"),
         "TIMEOUT": 300,
@@ -259,6 +268,15 @@ BUSINESS_TIME_ZONE = env("BUSINESS_TIME_ZONE", default="America/Sao_Paulo")
 DASHBOARD_CACHE_SECONDS = env.int("DASHBOARD_CACHE_SECONDS", default=60)
 # Retenção da trilha de auditoria (5 anos; docs/domain/audit.md).
 AUDIT_RETENTION_DAYS = env.int("AUDIT_RETENTION_DAYS", default=5 * 365)
+
+# ---------------------------------------------------------------------------
+# Observabilidade (docs/architecture/observability.md, ADR-015)
+# ---------------------------------------------------------------------------
+# Com valor, `/metrics` exige `Authorization: Bearer <token>` (o Prometheus envia).
+METRICS_TOKEN = env("METRICS_TOKEN", default="")
+# API de gerenciamento do RabbitMQ: a prontidão consulta os alarmes (disco/memória), que bloqueiam
+# publicações sem derrubar a conexão. Vazio = só testa a conexão.
+RABBITMQ_MANAGEMENT_URL = env("RABBITMQ_MANAGEMENT_URL", default="")
 
 # ---------------------------------------------------------------------------
 # Celery (ADR-005)

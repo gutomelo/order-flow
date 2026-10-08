@@ -11,6 +11,8 @@ from typing import Any
 import structlog
 from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
+from opentelemetry import propagate, trace
+from prometheus_client import Counter
 
 from shared.events.base import DomainEvent, EventEnvelope
 from shared.events.models import OutboxEvent, ProcessedEvent
@@ -19,6 +21,14 @@ logger = structlog.get_logger(__name__)
 
 Handler = Callable[[EventEnvelope], None]
 Dispatch = Callable[[str, str], Any]
+
+tracer = trace.get_tracer(__name__)
+
+DELIVERIES = Counter(
+    "orderflow_events_deliveries_total",
+    "Entregas de eventos do outbox por handler e resultado",
+    ["event_name", "outcome"],
+)
 
 _subscriptions: dict[str, list[str]] = {}  # evento → nomes dos handlers
 _handlers: dict[str, Handler] = {}  # nome → handler
@@ -96,13 +106,29 @@ def deliver(event_id: str, name: str) -> bool:
         occurred_at=event.occurred_at,
         payload=event.payload,
     )
-    with transaction.atomic():
-        try:
-            with transaction.atomic():
-                ProcessedEvent.objects.create(event_id=event.id, handler=name)
-        except IntegrityError:
-            logger.info("events.delivery.duplicate", handler=name, event_id=event_id)
-            return False
-        handler(envelope)
-    logger.info("events.delivery.done", handler=name, event_name=event.event_name)
+    payload = event.payload
+    # Mesmo fluxo da origem: logs com o correlation_id da requisição e span filho do trace dela.
+    with (
+        structlog.contextvars.bound_contextvars(
+            correlation_id=payload.get("correlation_id") or event_id,
+            request_id=payload.get("request_id") or None,
+        ),
+        tracer.start_as_current_span(
+            f"event {event.event_name}",
+            context=propagate.extract(payload.get("trace_context") or {}),
+            kind=trace.SpanKind.CONSUMER,
+            attributes={"orderflow.event_id": event_id, "orderflow.handler": name},
+        ),
+    ):
+        with transaction.atomic():
+            try:
+                with transaction.atomic():
+                    ProcessedEvent.objects.create(event_id=event.id, handler=name)
+            except IntegrityError:
+                logger.info("events.delivery.duplicate", handler=name, event_id=event_id)
+                DELIVERIES.labels(event_name=event.event_name, outcome="duplicate").inc()
+                return False
+            handler(envelope)
+        DELIVERIES.labels(event_name=event.event_name, outcome="delivered").inc()
+        logger.info("events.delivery.done", handler=name, event_name=event.event_name)
     return True

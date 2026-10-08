@@ -1,0 +1,18 @@
+# Coleta local (perfil `observability` do Docker Compose; ADR-015).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # API: HTTP, banco, cache, negócio e indicadores lidos do banco na coleta.
+  - job_name: orderflow-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]
+  # Worker Celery: tasks, entregas do outbox e e-mails (processos filhos somados).
+  - job_name: orderflow-worker
+    static_configs:
+      - targets: ["celery-worker:9100"]
