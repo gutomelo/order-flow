@@ -1,0 +1,25 @@
+# Documentação de domínio
+
+Fonte da verdade das **regras de negócio**. O código implementa o que está aqui; divergência entre
+código e documento é um defeito (de um dos dois). Atualize o documento no mesmo PR que muda a regra.
+
+| Documento | Conteúdo | Status |
+| --- | --- | --- |
+| [glossary.md](glossary.md) | Linguagem ubíqua PT ↔ EN (nomes usados no código) | Vigente |
+| [identity.md](identity.md) | Organizações (tenants), usuários, equipes, papéis, permissões, autenticação | Vigente |
+| [catalog.md](catalog.md) | Produtos (SKU, GTIN, unidade), categorias hierárquicas, por que o produto não tem preço | Vigente |
+| [customers.md](customers.md) | Clientes B2B, segmentos comerciais, endereços (cobrança/entrega padrão) e contatos | Vigente |
+| [suppliers.md](suppliers.md) | Fornecedores, CNPJ numérico e alfanumérico | Vigente |
+| [pricing.md](pricing.md) | Tabelas de preço (padrão e por segmento), regra de resolução do preço | Vigente |
+| [orders.md](orders.md) | Ciclo de vida do pedido, máquina de estados, totais, cancelamento, devolução | Vigente |
+| [inventory.md](inventory.md) | Saldo, reservas, movimentações, concorrência, expiração | Vigente |
+| [shipping.md](shipping.md) | Remessa, etiqueta e rastreio da transportadora, entrega manual | Vigente |
+| [audit.md](audit.md) | Trilha de auditoria de pedidos, dinheiro e estoque: ações, antes/depois, append-only, retenção | Vigente |
+| [dashboard.md](dashboard.md) | Indicadores (pedidos, funil, faturamento líquido, estoque baixo), períodos, cache | Vigente |
+| [notifications.md](notifications.md) | Avisos por e-mail a partir de eventos, destinatários, envio com retry e histórico | Vigente |
+| [payments.md](payments.md) | Cobrança por cartão (gateway) e baixa manual, estornos, reconciliação, eventos | Vigente |
+
+Novos documentos de domínio usam o template `.claude/templates/domain-doc.md`.
+
+A visão geral dos módulos, suas fronteiras e dependências está em
+[../architecture/domain-model.md](../architecture/domain-model.md).

@@ -1,0 +1,3 @@
+# Versão do moon usada localmente (`proto install`) e na CI (moonrepo/setup-toolchain).
+# Node e pnpm são fixados em .moon/toolchains.yml; Python e dependências, pelo uv (backend/).
+moon = "2.5.6"

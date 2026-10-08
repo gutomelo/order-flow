@@ -1,0 +1,8 @@
+{% autoescape off %}Olá, {{ name }}.
+
+O pedido {{ order.reference }} foi despachado.
+
+Transportadora: {{ order.carrier }}
+Código de rastreio: {{ order.tracking_code }}
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

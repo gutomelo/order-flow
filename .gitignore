@@ -1,0 +1,37 @@
+# Secrets e ambiente local
+.env
+.env.*
+!.env.example
+
+# Claude Code — preferências pessoais
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Moonrepo
+.moon/cache/
+.moon/docker/
+.moon/hooks/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Django
+staticfiles/
+media/
+
+# Editores / SO
+.idea/
+.DS_Store

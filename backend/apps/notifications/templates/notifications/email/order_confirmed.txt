@@ -1,0 +1,11 @@
+{% autoescape off %}Olá, {{ name }}.
+
+Seu pedido {{ order.reference }} foi confirmado e o estoque está reservado para você.
+
+Total: {{ total }}
+{% if payment_due %}Pague até {{ payment_due }}. Depois disso, a reserva é liberada.
+{% endif %}
+Itens:
+{% for line in order.lines %}- {{ line.quantity }} x {{ line.product_name }} ({{ line.sku }})
+{% endfor %}
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

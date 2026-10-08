@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: orderflow
+    folder: OrderFlow
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false  # o painel é código: mudanças vão para o JSON no repositório
+    options:
+      path: /var/lib/grafana/dashboards

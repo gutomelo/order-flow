@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@layer base {
+  html {
+    @apply bg-background font-sans text-text-primary antialiased;
+  }
+
+  /* Foco sempre visível para navegação por teclado (WCAG 2.4.7). */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
+
+  /* Valores numéricos alinhados em tabelas e indicadores. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

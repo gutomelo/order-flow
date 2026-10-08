@@ -1,0 +1,6 @@
+{% autoescape off %}Olá, {{ name }}.
+
+Recebemos o pagamento do pedido {{ order.reference }} ({{ total }}). Agora ele segue para separação
+e despacho; avisaremos quando sair para entrega.
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

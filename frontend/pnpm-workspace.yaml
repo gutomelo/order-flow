@@ -1,0 +1,8 @@
+# Configurações do pnpm para o frontend (a partir do pnpm 11 elas vivem neste arquivo).
+#
+# Scripts de build de dependências são bloqueados por padrão (proteção de supply chain); cada
+# exceção é uma decisão explícita e revisada.
+allowBuilds:
+  # O postinstall do vue-demi (dependência do TanStack Query) apenas alterna entre Vue 2 e 3;
+  # o padrão já é Vue 3, então o script não é necessário.
+  vue-demi: false

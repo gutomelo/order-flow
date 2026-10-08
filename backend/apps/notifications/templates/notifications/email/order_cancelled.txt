@@ -1,0 +1,9 @@
+{% autoescape off %}Olá, {{ name }}.
+
+O pedido {{ order.reference }} foi cancelado.
+{% if refund %}
+O valor pago ({{ total }}) será estornado. Avisaremos quando o estorno for concluído.
+{% endif %}
+Em caso de dúvida, fale com o seu vendedor.
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

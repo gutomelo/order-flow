@@ -1,0 +1,431 @@
+[project]
+name = "orderflow-backend"
+version = "0.1.0"
+description = "OrderFlow B2B order and inventory management API (Django modular monolith)."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "celery>=5.6,<6",
+    "django>=5.2.17,<5.3",
+    "django-cors-headers>=4.9",
+    "django-environ>=0.14",
+    "django-filter>=26.2",
+    "django-prometheus>=2.5.0",
+    "django-stubs-ext>=5.2,<5.3",
+    "djangorestframework>=3.18,<3.19",
+    "djangorestframework-simplejwt>=5.5",
+    "drf-spectacular>=0.30",
+    "gunicorn>=26.2",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-instrumentation-celery>=0.66b1",
+    "opentelemetry-instrumentation-django>=0.66b1",
+    "opentelemetry-instrumentation-psycopg>=0.66b1",
+    "opentelemetry-instrumentation-redis>=0.66b1",
+    "opentelemetry-sdk>=1.45.1",
+    "psycopg[binary]>=3.3",
+    "redis>=6",
+    "structlog>=26.1",
+]
+
+[dependency-groups]
+dev = [
+    "celery-types>=0.26",
+    "django-stubs>=5.2,<5.3",
+    "djangorestframework-stubs>=3.16",
+    "factory-boy>=3.3",
+    "faker>=40",
+    "flower>=2",
+    "import-linter>=2.15",
+    "mypy>=1.18",
+    "pre-commit>=4",
+    "pytest>=9",
+    "pytest-cov>=7",
+    "pytest-django>=4.14",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+# O backend é uma aplicação, não um pacote distribuível.
+package = false
+required-version = ">=0.12"
+
+# ---------------------------------------------------------------------------
+# Ruff — lint e formatação (substitui flake8, isort e Black)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/migrations/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # bugbear
+    "UP",      # pyupgrade
+    "DJ",      # Django
+    "S",       # bandit (segurança)
+    "SIM",     # simplificações
+    "RUF",     # regras do Ruff
+    "DTZ",     # datetime sem timezone
+    "T20",     # print
+    "PLE", "PLW",  # pylint: erros e avisos
+]
+
+# Django e DRF declaram configuração com listas em atributos de classe (Meta.constraints,
+# permission_classes, filterset_fields): é o idioma dos frameworks, não estado mutável.
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+"**/tests/**/*.py" = ["S101", "S105", "S106"]
+"conftest.py" = ["S101"]
+# Settings por ambiente estendem base.py via star import (padrão Django).
+"config/settings/*.py" = ["F403", "F405"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "shared"]
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = ["/migrations/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "environ.*",
+    "factory.*",
+    "drf_spectacular.*",
+    "django_filters.*",
+    "corsheaders.*",
+    "django_prometheus.*",
+]
+ignore_missing_imports = true
+
+# factory_boy reexporta a API em `factory/__init__.py` sem `__all__`.
+[[tool.mypy.overrides]]
+module = ["factory", "factory.*"]
+implicit_reexport = true
+
+# Testes chamam APIs de teste sem tipos completos (factory_boy, APIClient).
+[[tool.mypy.overrides]]
+module = ["tests.*", "apps.*.tests.*"]
+disallow_untyped_calls = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["tests", "apps"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = [
+    # Chave de assinatura JWT curta é falha de segurança, não aviso.
+    "error::jwt.warnings.InsecureKeyLengthWarning",
+]
+markers = [
+    "unit: teste sem banco de dados",
+    "integration: teste com PostgreSQL real",
+    "concurrency: teste de concorrência (transaction=True, threads)",
+    "slow: teste lento",
+]
+
+# ---------------------------------------------------------------------------
+# import-linter — fronteiras de arquitetura (ADR-001)
+# Contratos por módulo são adicionados pela skill create-django-module.
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["apps", "config", "shared"]
+# Necessário para proibir bibliotecas externas (DRF, Celery) dentro do domínio.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "shared não depende de módulos de negócio nem do projeto Django"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["apps", "config"]
+
+[[tool.importlinter.contracts]]
+name = "módulos de negócio não dependem do pacote de configuração"
+type = "forbidden"
+source_modules = ["apps"]
+forbidden_modules = ["config"]
+
+[[tool.importlinter.contracts]]
+name = "identity: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.identity.api",
+    "apps.identity.application",
+    "apps.identity.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "domínio puro: sem DRF, SimpleJWT ou Celery"
+type = "forbidden"
+source_modules = ["apps.*.domain"]
+forbidden_modules = ["rest_framework", "rest_framework_simplejwt", "celery"]
+
+[[tool.importlinter.contracts]]
+name = "fronteiras do catálogo: catalog → suppliers, nunca o inverso"
+type = "forbidden"
+source_modules = ["apps.suppliers"]
+forbidden_modules = ["apps.catalog"]
+
+[[tool.importlinter.contracts]]
+name = "módulos não importam api/ de outros módulos"
+type = "independence"
+modules = [
+    "apps.identity.api",
+    "apps.customers.api",
+    "apps.suppliers.api",
+    "apps.catalog.api",
+    "apps.inventory.api",
+    "apps.pricing.api",
+    "apps.orders.api",
+    "apps.payments.api",
+    "apps.notifications.api",
+    "apps.dashboard.api",
+    "apps.audit.api",
+]
+
+[[tool.importlinter.contracts]]
+name = "inventory: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.inventory.api",
+    "apps.inventory.application",
+    "apps.inventory.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "catálogo e fornecedores não conhecem o estoque"
+type = "forbidden"
+source_modules = ["apps.catalog", "apps.suppliers"]
+forbidden_modules = ["apps.inventory"]
+
+[[tool.importlinter.contracts]]
+name = "clientes não dependem de catálogo, fornecedores ou estoque"
+type = "forbidden"
+source_modules = ["apps.customers"]
+forbidden_modules = ["apps.catalog", "apps.suppliers", "apps.inventory"]
+
+[[tool.importlinter.contracts]]
+name = "catálogo, fornecedores e estoque não conhecem clientes"
+type = "forbidden"
+source_modules = ["apps.catalog", "apps.suppliers", "apps.inventory"]
+forbidden_modules = ["apps.customers"]
+
+[[tool.importlinter.contracts]]
+name = "orders: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.orders.api",
+    "apps.orders.application",
+    "apps.orders.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "orders é o coordenador: ninguém depende dele"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.payments",
+    "apps.shipping",
+]
+forbidden_modules = ["apps.orders"]
+
+[[tool.importlinter.contracts]]
+name = "pricing não é conhecido por catálogo, clientes e estoque"
+type = "forbidden"
+source_modules = ["apps.catalog", "apps.customers", "apps.inventory", "apps.suppliers"]
+forbidden_modules = ["apps.pricing"]
+
+[[tool.importlinter.contracts]]
+name = "payments: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.payments.api",
+    "apps.payments.application",
+    "apps.payments.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "payments não conhece outros módulos de negócio (recebe order_id opaco)"
+type = "forbidden"
+source_modules = ["apps.payments"]
+forbidden_modules = [
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+]
+
+[[tool.importlinter.contracts]]
+name = "shipping: camadas application → domain"
+type = "layers"
+layers = [
+    "apps.shipping.application",
+    "apps.shipping.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "shipping não conhece outros módulos de negócio (recebe order_id opaco)"
+type = "forbidden"
+source_modules = ["apps.shipping"]
+forbidden_modules = [
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.payments",
+]
+
+[[tool.importlinter.contracts]]
+name = "notifications: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.notifications.api",
+    "apps.notifications.application",
+    "apps.notifications.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "ninguém depende de notifications (só reage a eventos)"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+    "apps.dashboard",
+]
+forbidden_modules = ["apps.notifications"]
+
+[[tool.importlinter.contracts]]
+name = "notifications lê outros módulos só pela camada pública (application/selectors)"
+type = "forbidden"
+# Indireto é o esperado: application/selectors do módulo dono usam os próprios models.
+allow_indirect_imports = true
+# Testes de integração preparam cenários com os models dos outros módulos (só setup de dados).
+ignore_imports = ["apps.notifications.tests.** -> apps.**"]
+source_modules = ["apps.notifications"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.customers.models",
+    "apps.customers.api",
+    "apps.identity.models",
+    "apps.identity.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.shipping.models",
+    "apps.payments",
+]
+
+[[tool.importlinter.contracts]]
+name = "dashboard: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.dashboard.api",
+    "apps.dashboard.application",
+    "apps.dashboard.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "dashboard só lê: camada pública dos outros módulos, e ninguém depende dele"
+type = "forbidden"
+source_modules = ["apps.dashboard"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.payments.models",
+    "apps.payments.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.notifications",
+]
+allow_indirect_imports = true
+# Testes de integração preparam cenários com os models dos outros módulos (só setup de dados).
+ignore_imports = ["apps.dashboard.tests.** -> apps.**"]
+
+[[tool.importlinter.contracts]]
+name = "nenhum módulo de negócio depende do dashboard"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+    "apps.notifications",
+    "apps.audit",
+]
+forbidden_modules = ["apps.dashboard"]
+
+[[tool.importlinter.contracts]]
+name = "audit: camadas api → application → domain"
+type = "layers"
+layers = [
+    "apps.audit.api",
+    "apps.audit.application",
+    "apps.audit.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "ninguém depende de audit (só reage a eventos)"
+type = "forbidden"
+source_modules = [
+    "apps.identity",
+    "apps.customers",
+    "apps.suppliers",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.pricing",
+    "apps.orders",
+    "apps.payments",
+    "apps.shipping",
+    "apps.notifications",
+    "apps.dashboard",
+]
+forbidden_modules = ["apps.audit"]
+
+[[tool.importlinter.contracts]]
+name = "audit lê outros módulos só pela camada pública"
+type = "forbidden"
+source_modules = ["apps.audit"]
+forbidden_modules = [
+    "apps.orders.models",
+    "apps.orders.api",
+    "apps.inventory.models",
+    "apps.inventory.api",
+    "apps.payments",
+    "apps.notifications",
+    "apps.dashboard",
+]
+allow_indirect_imports = true
+ignore_imports = ["apps.audit.tests.** -> apps.**"]

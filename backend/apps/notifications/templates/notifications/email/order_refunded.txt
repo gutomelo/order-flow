@@ -1,0 +1,6 @@
+{% autoescape off %}Olá, {{ name }}.
+
+O estorno de {{ total }} referente ao pedido {{ order.reference }} foi concluído. O prazo para o
+valor aparecer na fatura ou no extrato depende do seu banco ou operadora.
+
+{% include "notifications/email/_signature.txt" %}{% endautoescape %}

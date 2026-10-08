@@ -1,0 +1,38 @@
+from django.contrib import admin
+from django.urls import URLPattern, URLResolver, include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from shared.infrastructure import health
+from shared.observability.metrics import metrics_view
+
+# Rotas versionadas da API: cada módulo inclui as suas aqui.
+api_v1_patterns: list[URLPattern | URLResolver] = [
+    path("", include("apps.identity.api.urls")),
+    path("", include("apps.customers.api.urls")),
+    path("", include("apps.suppliers.api.urls")),
+    path("", include("apps.catalog.api.urls")),
+    path("", include("apps.inventory.api.urls")),
+    path("", include("apps.pricing.api.urls")),
+    # Antes de orders: `orders/{id}/notifications` é do módulo notifications.
+    path("", include("apps.notifications.api.urls")),
+    path("", include("apps.orders.api.urls")),
+    path("", include("apps.payments.api.urls")),
+    path("", include("apps.dashboard.api.urls")),
+    path("", include("apps.audit.api.urls")),
+]
+
+urlpatterns = [
+    path("api/v1/", include((api_v1_patterns, "api"), namespace="v1")),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("health/live", health.live, name="health-live"),
+    path("health/ready", health.ready, name="health-ready"),
+    path("metrics", metrics_view, name="metrics"),
+    path("admin/", admin.site.urls),
+]
+
+# Respostas JSON no envelope padrão, inclusive fora das views DRF (ex.: rota inexistente).
+handler400 = "shared.exceptions.views.bad_request"
+handler403 = "shared.exceptions.views.permission_denied"
+handler404 = "shared.exceptions.views.not_found"
+handler500 = "shared.exceptions.views.server_error"

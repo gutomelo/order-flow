@@ -1,0 +1,79 @@
+$schema: '../.moon/cache/schemas/project.json'
+
+language: 'typescript'
+layer: 'application'
+stack: 'frontend'
+tags: ['vue', 'typescript']
+
+project:
+  title: 'OrderFlow Web'
+  description: 'Vue 3 + TypeScript SPA for the OrderFlow B2B platform.'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'index.html'
+    - 'public/**/*'
+    - 'env.d.ts'
+  configs:
+    - 'package.json'
+    - 'pnpm-lock.yaml'
+    - 'pnpm-workspace.yaml'
+    - 'tsconfig*.json'
+    - 'vite.config.ts'
+    - 'vitest.config.ts'
+    - 'eslint.config.ts'
+    - '.prettierrc.json'
+    - '.prettierignore'
+
+tasks:
+  lint:
+    command: 'pnpm exec eslint .'
+    inputs:
+      - '@group(sources)'
+      - '@group(configs)'
+
+  format:
+    command: 'pnpm exec prettier --write .'
+    options:
+      cache: false
+      runInCI: false
+
+  format-check:
+    command: 'pnpm exec prettier --check .'
+    inputs:
+      - '@group(sources)'
+      - '@group(configs)'
+
+  typecheck:
+    command: 'pnpm exec vue-tsc --build'
+    inputs:
+      - '@group(sources)'
+      - '@group(configs)'
+
+  test:
+    command: 'pnpm exec vitest run'
+    deps: ['~:typecheck']
+    inputs:
+      - '@group(sources)'
+      - '@group(configs)'
+
+  check:
+    # Tarefa agregadora: a documentação do moon v2 não prevê tarefa sem comando.
+    command: 'echo frontend checks passed'
+    deps: ['~:lint', '~:format-check', '~:typecheck', '~:test']
+    options:
+      cache: false
+
+  build:
+    command: 'pnpm exec vite build'
+    deps: ['~:typecheck']
+    inputs:
+      - '@group(sources)'
+      - '@group(configs)'
+    outputs:
+      - 'dist/**/*'
+
+  dev:
+    command: 'pnpm exec vite --host 0.0.0.0'
+    preset: 'server'

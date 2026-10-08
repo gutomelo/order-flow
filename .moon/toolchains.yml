@@ -1,0 +1,24 @@
+$schema: './cache/schemas/toolchains.json'
+
+# Moonrepo v2 — toolchains.
+# No moon v2 o arquivo se chama `toolchains.yml` (plural); `toolchain.yml` era a nomenclatura v1.
+# Referência: https://moonrepo.dev/docs/config/toolchain e https://moonrepo.dev/docs/migrate/2.0
+#
+# JavaScript/TypeScript (frontend): toolchain estável do moon, que instala Node e pnpm via proto
+# e garante a mesma versão em todas as máquinas e na CI.
+#
+# Python (backend): o toolchain Python do moon v2 ainda é experimental (`unstable_python` /
+# `unstable_uv`). Por isso NÃO o habilitamos: as tarefas do backend usam o toolchain `system`
+# e delegam ao `uv`, que já gerencia a versão do Python (`.python-version`) e o lockfile.
+# Revisar quando o toolchain Python estabilizar (ver docs/adr/009-moonrepo.md).
+
+javascript:
+  packageManager: 'pnpm'
+  # Tarefas são declaradas explicitamente em frontend/moon.yml, não inferidas do package.json.
+  inferTasksFromScripts: false
+
+node:
+  version: '24.21.0'
+
+pnpm:
+  version: '12.9.1'
