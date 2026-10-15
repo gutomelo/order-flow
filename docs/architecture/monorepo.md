@@ -146,6 +146,8 @@ O pnpm 12 vem com duas proteções ativas por padrão, mantidas no projeto:
 
 Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
+> **Desativado em 2026-10-15** por decisão do autor: o workflow só roda se disparado manualmente (`workflow_dispatch`); push, pull request e a execução diária não o acionam mais. A validação é local, com `moon` e Docker Compose. O conteúdo abaixo descreve os jobs, que continuam válidos para quando for reativado.
+
 | Job | O que faz |
 | --- | --- |
 | `checks` | checkout com `fetch-depth: 0` → `astral-sh/setup-uv` → `moonrepo/setup-toolchain` (moon do `.prototools`) → `moon ci`; PostgreSQL como service container |
