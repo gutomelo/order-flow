@@ -35,7 +35,7 @@ view de negócio usa `TenantScopedQuerysetMixin`; o tenant vem sempre de `reques
 | Tooling | uv, Ruff (lint + format), mypy, pnpm, ESLint, Prettier, vue-tsc |
 | Monorepo | Moonrepo v2 (tarefas de engenharia) |
 | Runtime local | Docker Compose (infraestrutura e serviços) |
-| CI | GitHub Actions executando `moon ci` |
+| CI | GitHub Actions executando `moon ci` — **desativado** (só disparo manual); validação local |
 
 ## Arquitetura (resumo)
 

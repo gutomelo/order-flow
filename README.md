@@ -221,7 +221,7 @@ frontend/   SPA Vue 3 + TypeScript: src/modules/ (uma pasta por feature), src/co
 infra/      Dockerfiles, nginx, Prometheus (scrape + alertas) e Grafana (painel provisionado)
 docs/       arquitetura, ADRs, domínio, desenvolvimento, diagramas e as imagens deste README
 .moon/      workspace e toolchains do Moonrepo
-.github/    CI: moon ci com PostgreSQL de serviço
+.github/    CI: moon ci com PostgreSQL de serviço (desativada: só disparo manual)
 .claude/    rules, skills, commands, agents e templates (Context Engineering para o Claude Code)
 ```
 
